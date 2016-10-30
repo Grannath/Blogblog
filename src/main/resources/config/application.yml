@@ -1,0 +1,10 @@
+banner:
+  location: classpath:config/banner.txt
+flyway:
+  enabled: true
+  url: ${spring.datasource.url}
+  validate-on-migrate: true
+  schemas: blogblog
+spring:
+  config:
+    location: file:E:\foo\
