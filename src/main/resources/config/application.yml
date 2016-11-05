@@ -5,3 +5,6 @@ flyway:
   url: ${spring.datasource.url}
   validate-on-migrate: true
   schemas: blogblog
+spring:
+  datasource:
+    username: blog_user
