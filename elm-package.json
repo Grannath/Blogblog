@@ -1,10 +1,10 @@
 {
-    "version": "1.0.0",
-    "summary": "helpful summary of your project, less than 80 characters",
-    "repository": "https://github.com/user/project.git",
-    "license": "BSD3",
+    "version": "0.0.1",
+    "summary": "Experimental blogging platform",
+    "repository": "https://github.com/grannath/blogblog.git",
+    "license": "MIT",
     "source-directories": [
-        "."
+        "./src/main/elm"
     ],
     "exposed-modules": [],
     "dependencies": {

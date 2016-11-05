@@ -1,15 +1,18 @@
 buildscript {
-	ext {
-		kotlinVersion = '1.0.4'
-		springBootVersion = '1.4.1.RELEASE'
-	}
-	repositories {
-		mavenCentral()
-	}
-	dependencies {
-		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-		classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
-	}
+    ext {
+        kotlinVersion = '1.0.4'
+        springBootVersion = '1.4.1.RELEASE'
+        elmBuildDir = "$buildDir/elm/main"
+        elmSourceDir = "src/main/elm"
+        elmMainFile = "static/blog.elm"
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
+    }
 }
 
 apply plugin: 'java'
@@ -22,41 +25,51 @@ sourceSets {
         java {
             srcDirs += 'src/jooq/java'
         }
+        resources {
+            srcDirs += elmBuildDir
+        }
     }
 }
 
 jar {
-	baseName = 'blogblog'
-	version = '0.0.1-SNAPSHOT'
+    baseName = 'blogblog'
+    version = '0.0.1-SNAPSHOT'
 }
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 
 dependencies {
     compile('org.springframework.boot:spring-boot-starter')
-	compile('org.springframework.boot:spring-boot-starter-jdbc')
+    compile('org.springframework.boot:spring-boot-starter-jdbc')
     compile('org.flywaydb:flyway-core')
-	compile('org.springframework.boot:spring-boot-starter-jooq')
-	compile('org.springframework.boot:spring-boot-starter-security')
-	compile('org.springframework.boot:spring-boot-starter-web')
-	compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
-	runtime('org.postgresql:postgresql')
-	testCompile('org.springframework.boot:spring-boot-starter-test')
-	testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')
+    compile('org.springframework.boot:spring-boot-starter-jooq')
+    compile('org.springframework.boot:spring-boot-starter-security')
+    compile('org.springframework.boot:spring-boot-starter-web')
+    compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
+    runtime('org.postgresql:postgresql')
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+    testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')
     testCompile('org.jooq:jooq-codegen')
 }
 
 task wrapper(type: Wrapper) {
-	gradleVersion = '3.1'
+    gradleVersion = '3.1'
+}
+
+task compileElm(type: Exec) {
+    processResources.dependsOn(compileElm)
+
+    def outputFile = elmMainFile.take(elmMainFile.lastIndexOf('.')) + '.js'
+    commandLine 'elm-make', "$elmSourceDir/$elmMainFile", '--yes', "--output=$elmBuildDir/$outputFile"
 }
 
 test {
     useJUnit {
-		excludeCategories('de.blogblog.JooqGeneration')
+        excludeCategories('de.blogblog.JooqGeneration')
     }
 }
