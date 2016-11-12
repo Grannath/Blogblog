@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        kotlinVersion = '1.0.4'
+        kotlinVersion = '1.0.5'
         springBootVersion = '1.4.1.RELEASE'
         elmBuildDir = "$buildDir/elm/main"
         elmSourceDir = "src/main/elm"
@@ -46,11 +46,12 @@ repositories {
 dependencies {
     compile('org.springframework.boot:spring-boot-starter')
     compile('org.springframework.boot:spring-boot-starter-jdbc')
-    compile('org.flywaydb:flyway-core')
+    compile('org.flywaydb:flyway-core:4.0.3')
     compile('org.springframework.boot:spring-boot-starter-jooq')
     compile('org.springframework.boot:spring-boot-starter-security')
     compile('org.springframework.boot:spring-boot-starter-web')
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
+    compile('com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.1')
     runtime('org.postgresql:postgresql')
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')

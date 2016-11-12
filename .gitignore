@@ -31,3 +31,4 @@ nbdist/
 ### Local app config ###
 application-jooq-gen.yml
 /out/
+flyway.conf

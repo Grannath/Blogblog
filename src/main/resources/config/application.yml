@@ -8,3 +8,8 @@ flyway:
 spring:
   datasource:
     username: blog_user
+  jooq:
+    sql-dialect: postgres
+  jackson:
+    serialization:
+      indent_output: true

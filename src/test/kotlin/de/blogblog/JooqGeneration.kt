@@ -6,7 +6,6 @@ import org.jooq.util.jaxb.Target
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
@@ -19,10 +18,11 @@ import javax.sql.DataSource
  */
 
 @RunWith(SpringRunner::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("jooq-gen")
 @Category(JooqGeneration::class)
 class JooqGeneration {
+
     @Autowired
     lateinit var dataSource: DataSource
 
@@ -51,5 +51,4 @@ class JooqGeneration {
         tool.setDataSource(dataSource)
         tool.run(conf)
     }
-
 }

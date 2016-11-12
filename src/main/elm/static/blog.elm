@@ -1,9 +1,11 @@
+import Date exposing (Date)
 import Html exposing (..)
 import Html.App as App
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Http
-import Json.Decode as Json
+import Http exposing (Error(BadResponse, NetworkError, Timeout, UnexpectedPayload))
+import Json.Decode as Json exposing (string, (:=))
+import List exposing (map)
 import Task
 
 
@@ -21,16 +23,23 @@ main =
 -- MODEL
 
 
-type alias Model =
-  { topic : String
-  , gifUrl : String
+type alias Post =
+  { title : String
+  , content : String
+  , author : String
   }
 
+type alias PostList =
+  { posts : List Post
+  , page : Int
+  }
+
+type Model = Multiple PostList | Single Post | LoadError Http.Error
 
 init : String -> (Model, Cmd Msg)
 init topic =
-  ( Model topic "waiting.gif"
-  , getRandomGif topic
+  ( Multiple (PostList [] 0)
+  , getPostList 0
   )
 
 
@@ -39,22 +48,22 @@ init topic =
 
 
 type Msg
-  = MorePlease
-  | FetchSucceed String
+  = FetchList PostList
+  | FetchPost Post
   | FetchFail Http.Error
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    MorePlease ->
-      (model, getRandomGif model.topic)
+    FetchList list ->
+      (Multiple list, Cmd.none)
 
-    FetchSucceed newUrl ->
-      (Model model.topic newUrl, Cmd.none)
+    FetchPost post ->
+      (Single post, Cmd.none)
 
-    FetchFail _ ->
-      (model, Cmd.none)
+    FetchFail error ->
+      (LoadError error, Cmd.none)
 
 
 
@@ -63,14 +72,39 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+  case model of
+    Multiple posts ->
+      div [] (map showPost posts.posts)
+    Single post ->
+      showPost post
+    LoadError error ->
+     div []
+         [ h2 [] [text "Error!"]
+         , br [] []
+         , text (errorText error)
+         ]
+
+errorText : Http.Error -> String
+errorText error =
+  case error of
+    Timeout ->
+      "Timeout!"
+    NetworkError ->
+      "Network error!"
+    UnexpectedPayload msg ->
+      "Unexpected payload: " ++ msg
+    BadResponse code msg ->
+      "Bad response: " ++ (toString code) ++ " : " ++ msg
+
+showPost : Post -> Html Msg
+showPost post =
   div []
-    [ h2 [] [text model.topic]
-    , button [ onClick MorePlease ] [ text "More Please!" ]
+    [ h2 [] [text post.title]
     , br [] []
-    , img [src model.gifUrl] []
+    , text post.content
+    , br [] []
+    , text post.author
     ]
-
-
 
 -- SUBSCRIPTIONS
 
@@ -84,15 +118,22 @@ subscriptions model =
 -- HTTP
 
 
-getRandomGif : String -> Cmd Msg
-getRandomGif topic =
+getPostList : Int -> Cmd Msg
+getPostList page =
   let
-    url =
-      "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=" ++ topic
+    url = Http.url "http://localhost:8080/public/posts/" [("page", (toString page))]
   in
-    Task.perform FetchFail FetchSucceed (Http.get decodeGifUrl url)
+    Task.perform FetchFail FetchList (Http.get (parsePostList page) url)
 
+parsePostList : Int -> Json.Decoder PostList
+parsePostList page =
+  Json.object2 PostList
+    (Json.list parsePost)
+    (Json.succeed page)
 
-decodeGifUrl : Json.Decoder String
-decodeGifUrl =
-  Json.at ["data", "image_url"] Json.string
+parsePost : Json.Decoder Post
+parsePost =
+  Json.object3 Post
+    ("title" := string)
+    ("content" := string)
+    ("author" := string)

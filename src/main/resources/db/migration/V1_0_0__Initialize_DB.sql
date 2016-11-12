@@ -11,6 +11,8 @@ BEGIN
 END
 $body$;
 
+GRANT USAGE ON SCHEMA blogblog TO blog_user;
+
 CREATE TABLE blogblog.bl_users (
   id          SERIAL,
   username    VARCHAR(50)           NOT NULL UNIQUE,
