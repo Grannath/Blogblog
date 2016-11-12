@@ -27,6 +27,7 @@ open class PostsController(val create: DSLContext) {
                 .from(BL_POSTS)
                 .join(BL_USERS)
                 .onKey(BL_POSTS.AUTHOR)
+                .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.desc())
                 .limit(pageSize)
                 .offset((page ?: 0) * pageSize)
