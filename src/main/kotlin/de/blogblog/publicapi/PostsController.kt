@@ -1,11 +1,11 @@
 package de.blogblog.publicapi
 
-import de.blogblog.jooq.tables.BlPosts.BL_POSTS
-import de.blogblog.jooq.tables.BlUsers.BL_USERS
-import de.blogblog.model.Post
+import de.blogblog.model.*
 import org.jooq.DSLContext
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Created by Johannes on 05.11.2016.
@@ -15,42 +15,58 @@ import org.springframework.web.bind.annotation.*
 open class PostsController(val create: DSLContext) {
 
     companion object {
-        val pageSize = 10
+        val defaultPageSize = 10
     }
 
-    @GetMapping(path = arrayOf("/"),
+    @GetMapping(path = arrayOf(""),
                 produces = arrayOf("application/json", "text/plain"))
-    open fun getPostsForPage(@RequestParam("page",
-                                           required = false) page: Int?): List<Post> {
-        return create
-                .select(*Post.fields)
-                .from(BL_POSTS)
-                .join(BL_USERS)
-                .onKey(BL_POSTS.AUTHOR)
-                .where(BL_POSTS.HIDDEN.eq(false))
-                .orderBy(BL_POSTS.CREATED.desc())
-                .limit(pageSize)
-                .offset((page ?: 0) * pageSize)
-                .fetchInto(Post::class.java)
+    open fun getPosts(@RequestParam("pageSize",
+                                    required = false) pageSize: Int?,
+                      zone: ZoneId?): List<Post> {
+        return create.selectPosts(pageSize ?: defaultPageSize)
+                .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+    }
+
+    @GetMapping(path = arrayOf("/next"),
+                produces = arrayOf("application/json", "text/plain"))
+    open fun getNextPosts(@RequestParam("pageSize",
+                                        required = false) pageSize: Int?,
+                          @RequestParam("from") from: LocalDateTime,
+                          zone: ZoneId?): List<Post> {
+        return create.selectNextPosts(from.toInstant(zone ?: ZoneId.systemDefault()),
+                                      pageSize ?: defaultPageSize)
+                .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+    }
+
+    @GetMapping(path = arrayOf("/previous"),
+                produces = arrayOf("application/json", "text/plain"))
+    open fun getPreviousPosts(@RequestParam("pageSize",
+                                            required = false) pageSize: Int?,
+                              @RequestParam("from") from: LocalDateTime,
+                              zone: ZoneId?): List<Post> {
+        return create.selectPreviousPosts(from.toInstant(zone ?: ZoneId.systemDefault()),
+                                          pageSize ?: defaultPageSize)
+                .fetch(intoPost(zone ?: ZoneId.systemDefault()))
     }
 
     @GetMapping(path = arrayOf("/{id}"),
                 produces = arrayOf("application/json", "text/plain"))
-    open fun getPostForId(@PathVariable id: Int): Post {
+    open fun getPostForId(@PathVariable id: Int, zone: ZoneId?): Post {
 
-        return create.select(*Post.fields)
-                     .from(BL_POSTS)
-                     .join(BL_USERS)
-                     .onKey(BL_POSTS.AUTHOR)
-                     .where(BL_POSTS.ID.eq(id))
-                     .fetchOneInto(Post::class.java)
+        return create.selectPost(id)
+                       .fetchOne(intoPost(zone ?: ZoneId.systemDefault()))
                ?: throw NoSuchPostException("No post found with ID $id.")
     }
 }
 
+fun LocalDateTime.toInstant(zone: ZoneId) = atZone(zone).toInstant()
+
 @ResponseStatus(value = HttpStatus.NOT_FOUND)
 class NoSuchPostException : RuntimeException {
-    constructor(message: String, vararg params: Any?) : super(message.format(params))
+    constructor(message: String, vararg params: Any?) : super(message.format(
+            params))
 
-    constructor(message: String, vararg params: Any?, cause: Exception) : super(message.format(params), cause)
+    constructor(message: String, vararg params: Any?, cause: Exception) : super(
+            message.format(params),
+            cause)
 }

@@ -4,7 +4,7 @@ buildscript {
         springBootVersion = '1.4.1.RELEASE'
         elmBuildDir = "$buildDir/elm/main"
         elmSourceDir = "src/main/elm"
-        elmMainFile = "static/blog.elm"
+        elmMainFile = "static/Main.elm"
     }
     repositories {
         mavenCentral()
