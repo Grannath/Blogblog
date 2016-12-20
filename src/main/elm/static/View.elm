@@ -6,7 +6,8 @@ import Html.Events exposing (..)
 import Http
 import Model exposing (..)
 import String exposing (join, padLeft)
-import Time.DateTime exposing (DateTime, day, month, year)
+import Time.Date exposing (Weekday(..))
+import Time.DateTime as Time exposing (DateTime, day, month, year, hour, minute)
 import Material
 import Material.Layout as Layout
 
@@ -46,7 +47,7 @@ mainContent model =
             text "foo"
 
         LoadError error ->
-            text "foo"
+            text <| errorText error
 
 
 loadPlaceholder : Html Msg
@@ -69,9 +70,11 @@ postTeaser post =
         [ class "postlist__teaser" ]
         [ h2
             [ class "postlist__headline"
-            , onClick (LoadPost post)
             ]
-            [ a [] [ text post.title ] ]
+            [ a
+                [ onClick (LoadPost post) ]
+                [ text post.title ]
+            ]
         , div
             [ class "postlist__author" ]
             [ text ("von " ++ post.author) ]
@@ -118,8 +121,47 @@ errorText error =
 
 dateString : DateTime -> String
 dateString date =
-    join "."
-        [ padLeft 2 '0' (toString (day date))
-        , padLeft 2 '0' (toString (month date))
-        , toString (year date)
-        ]
+    weekday date
+        ++ ", the "
+        ++ (join "."
+                [ paddedDateComp day date
+                , paddedDateComp month date
+                , toString (year date)
+                ]
+           )
+        ++ ", "
+        ++ (join ":"
+                [ paddedDateComp hour date
+                , paddedDateComp minute date
+                ]
+           )
+
+
+paddedDateComp : (DateTime -> Int) -> DateTime -> String
+paddedDateComp comp date =
+    comp date |> toString |> padLeft 2 '0'
+
+
+weekday : DateTime -> String
+weekday date =
+    case Time.weekday date of
+        Mon ->
+            "Monday"
+
+        Tue ->
+            "Tuesday"
+
+        Wed ->
+            "Wednesday"
+
+        Thu ->
+            "Thursday"
+
+        Fri ->
+            "Friday"
+
+        Sat ->
+            "Saturday"
+
+        Sun ->
+            "Sunday"

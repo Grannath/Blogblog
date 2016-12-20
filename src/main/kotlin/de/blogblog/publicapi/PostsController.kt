@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * Created by Johannes on 05.11.2016.
@@ -18,7 +19,7 @@ open class PostsController(val create: DSLContext) {
         val defaultPageSize = 10
     }
 
-    @GetMapping(path = arrayOf(""),
+    @GetMapping(path = arrayOf("", "/"),
                 produces = arrayOf("application/json", "text/plain"))
     open fun getPosts(@RequestParam("pageSize",
                                     required = false) pageSize: Int?,
@@ -31,11 +32,10 @@ open class PostsController(val create: DSLContext) {
                 produces = arrayOf("application/json", "text/plain"))
     open fun getNextPosts(@RequestParam("pageSize",
                                         required = false) pageSize: Int?,
-                          @RequestParam("from") from: LocalDateTime,
-                          zone: ZoneId?): List<Post> {
-        return create.selectNextPosts(from.toInstant(zone ?: ZoneId.systemDefault()),
+                          @RequestParam("from") from: ZonedDateTime): List<Post> {
+        return create.selectNextPosts(from.toInstant(),
                                       pageSize ?: defaultPageSize)
-                .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+                .fetch(intoPost(from.zone))
     }
 
     @GetMapping(path = arrayOf("/previous"),

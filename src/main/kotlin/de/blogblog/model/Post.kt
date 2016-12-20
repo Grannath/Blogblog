@@ -8,6 +8,7 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * Created by Johannes on 05.11.2016.
@@ -16,7 +17,7 @@ data class Post(val id: Int,
                 val title: String,
                 val content: String,
                 val author: String,
-                val created: LocalDateTime) {
+                val created: ZonedDateTime) {
 
     companion object {
         val fields = arrayOf(BL_POSTS.ID,
@@ -27,10 +28,6 @@ data class Post(val id: Int,
     }
 }
 
-data class PostPage(val page: Int,
-                    val numberPages: Int,
-                    val posts: List<Post>)
-
 fun intoPost(zone: ZoneId) = {
     rec: Record ->
     Post(rec.getId(),
@@ -39,7 +36,7 @@ fun intoPost(zone: ZoneId) = {
          rec.getAuthor(),
          rec.getCreated()
                  .toInstant()
-                 .toLocalDateTime(zone))
+                 .atZone(zone))
 }
 
 fun Record.getId() = this.getValue(BL_POSTS.ID)!!
@@ -52,13 +49,7 @@ fun Record.getAuthor() = this.getValue(BL_USERS.USERNAME)!!
 
 fun Record.getCreated() = this.getValue(BL_POSTS.CREATED)!!
 
-fun Timestamp.toInstant() = Instant.ofEpochMilli(time)
-
-fun Instant.toTimestamp() = Timestamp.from(this)
-
-fun Instant.toLocalDateTime(zone: ZoneId) =
-        LocalDateTime.ofInstant(this,
-                                zone.rules.getOffset(this))
+fun Instant.toTimestamp() = Timestamp.from(this)!!
 
 fun DSLContext.selectPosts(pageSize: Int) =
         this.select(*Post.fields)
@@ -67,7 +58,7 @@ fun DSLContext.selectPosts(pageSize: Int) =
                 .onKey(BL_POSTS.AUTHOR)
                 .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.desc())
-                .limit(pageSize)
+                .limit(pageSize)!!
 
 fun DSLContext.selectNextPosts(created: Instant, pageSize: Int) =
         this.select(*Post.fields)
@@ -77,7 +68,7 @@ fun DSLContext.selectNextPosts(created: Instant, pageSize: Int) =
                 .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.desc())
                 .seek(created.toTimestamp())
-                .limit(pageSize)
+                .limit(pageSize)!!
 
 fun DSLContext.selectPreviousPosts(created: Instant,
                                    pageSize: Int) =
@@ -88,7 +79,7 @@ fun DSLContext.selectPreviousPosts(created: Instant,
                 .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.asc())
                 .seek(created.toTimestamp())
-                .limit(pageSize)
+                .limit(pageSize)!!
 
 fun DSLContext.selectPost(id: Int) =
         this.select(*Post.fields)
@@ -96,4 +87,4 @@ fun DSLContext.selectPost(id: Int) =
                 .join(BL_USERS)
                 .onKey(BL_POSTS.AUTHOR)
                 .where(BL_POSTS.ID.eq(id))
-                .orderBy(BL_POSTS.CREATED.desc())
+                .orderBy(BL_POSTS.CREATED.desc())!!
