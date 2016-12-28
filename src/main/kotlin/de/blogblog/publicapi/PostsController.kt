@@ -2,11 +2,11 @@ package de.blogblog.publicapi
 
 import de.blogblog.model.*
 import org.jooq.DSLContext
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZonedDateTime
 
 /**
  * Created by Johannes on 05.11.2016.
@@ -17,6 +17,7 @@ open class PostsController(val create: DSLContext) {
 
     companion object {
         val defaultPageSize = 10
+        private val logger = LoggerFactory.getLogger(javaClass)
     }
 
     @GetMapping(path = arrayOf("", "/"),
@@ -24,18 +25,32 @@ open class PostsController(val create: DSLContext) {
     open fun getPosts(@RequestParam("pageSize",
                                     required = false) pageSize: Int?,
                       zone: ZoneId?): List<Post> {
+        logger.debug("Loading {} posts for zone {}.", pageSize, zone)
+
         return create.selectPosts(pageSize ?: defaultPageSize)
                 .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+                .map { it.shortened() }
+                .sortedByDescending { it.created }
+                .apply { logger.debug("Found {} posts from {}.", size, map { it.created }) }
     }
 
     @GetMapping(path = arrayOf("/next"),
                 produces = arrayOf("application/json", "text/plain"))
     open fun getNextPosts(@RequestParam("pageSize",
                                         required = false) pageSize: Int?,
-                          @RequestParam("from") from: ZonedDateTime): List<Post> {
-        return create.selectNextPosts(from.toInstant(),
-                                      pageSize ?: defaultPageSize)
-                .fetch(intoPost(from.zone))
+                          @RequestParam("from") from: LocalDateTime,
+                          zone: ZoneId?): List<Post> {
+        logger.debug("Loading next {} posts from {} for zone {}.",
+                     pageSize,
+                     from,
+                     zone)
+
+        return create.selectOlderPosts(from.atZone(zone ?: ZoneId.systemDefault()),
+                                       pageSize ?: defaultPageSize)
+                .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+                .map { it.shortened() }
+                .sortedByDescending { it.created }
+                .apply { logger.debug("Found {} posts.", size) }
     }
 
     @GetMapping(path = arrayOf("/previous"),
@@ -44,22 +59,29 @@ open class PostsController(val create: DSLContext) {
                                             required = false) pageSize: Int?,
                               @RequestParam("from") from: LocalDateTime,
                               zone: ZoneId?): List<Post> {
-        return create.selectPreviousPosts(from.toInstant(zone ?: ZoneId.systemDefault()),
-                                          pageSize ?: defaultPageSize)
+        logger.debug("Loading previous {} posts from {} for zone {}.",
+                     pageSize,
+                     from,
+                     zone)
+
+        return create.selectNewerPosts(from.atZone(zone ?: ZoneId.systemDefault()),
+                                       pageSize ?: defaultPageSize)
                 .fetch(intoPost(zone ?: ZoneId.systemDefault()))
+                .map { it.shortened() }
+                .sortedByDescending { it.created }
+                .apply { logger.debug("Found {} posts.", size) }
     }
 
     @GetMapping(path = arrayOf("/{id}"),
                 produces = arrayOf("application/json", "text/plain"))
     open fun getPostForId(@PathVariable id: Int, zone: ZoneId?): Post {
+        logger.debug("Loading post {} for zone {}.", id, zone)
 
         return create.selectPost(id)
                        .fetchOne(intoPost(zone ?: ZoneId.systemDefault()))
                ?: throw NoSuchPostException("No post found with ID $id.")
     }
 }
-
-fun LocalDateTime.toInstant(zone: ZoneId) = atZone(zone).toInstant()
 
 @ResponseStatus(value = HttpStatus.NOT_FOUND)
 class NoSuchPostException : RuntimeException {

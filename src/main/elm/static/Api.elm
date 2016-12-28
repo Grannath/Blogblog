@@ -1,10 +1,14 @@
 module Api exposing (getPosts, getPreviousPosts, getNextPosts, getPost)
 
-import Model exposing (Settings, Post)
-import View exposing (Msg(..))
+import AppModel exposing (Settings, Post, Msg(..))
 import Http exposing (..)
 import Json.Decode as Json exposing (field, int, string, list)
-import Time.DateTime exposing (DateTime, fromISO8601)
+import List exposing (head)
+import Maybe exposing (andThen, map, withDefault)
+import Regex exposing (HowMany(AtMost), contains, find, regex, split)
+import Time.TimeZone exposing (TimeZone)
+import Time.TimeZones exposing (fromName)
+import Time.ZonedDateTime exposing (ZonedDateTime, fromISO8601, toISO8601)
 
 
 postsApiUrl =
@@ -20,7 +24,7 @@ getNextPosts : Settings -> Post -> Cmd Msg
 getNextPosts set post =
     let
         url =
-            postsApiUrl ++ "/next?from=" ++ (toString post.created) ++ "&pageSize=" ++ (toString set.pageSize)
+            postsApiUrl ++ "/next?from=" ++ (toISO8601 post.created) ++ "&pageSize=" ++ (toString set.pageSize)
     in
         Http.send NextLoaded (Http.get url parsePostList)
 
@@ -29,7 +33,7 @@ getPreviousPosts : Settings -> Post -> Cmd Msg
 getPreviousPosts set post =
     let
         url =
-            postsApiUrl ++ "/previous?from=" ++ (toString post.created) ++ "&pageSize=" ++ (toString set.pageSize)
+            postsApiUrl ++ "/previous?from=" ++ (toISO8601 post.created) ++ "&pageSize=" ++ (toString set.pageSize)
     in
         Http.send PreviousLoaded (Http.get url parsePostList)
 
@@ -62,15 +66,73 @@ parsePost =
         (field "created" date)
 
 
-date : Json.Decoder DateTime
+date : Json.Decoder ZonedDateTime
 date =
     string
         |> Json.andThen
             (\val ->
-                case fromISO8601 val of
+                case fromExtendedIso val of
                     Ok date ->
                         Json.succeed date
 
                     Err msg ->
                         Json.fail msg
             )
+
+
+zoneRegex =
+    regex "\\[(.*)\\]"
+
+
+fromExtendedIso : String -> Result String ZonedDateTime
+fromExtendedIso iso =
+    let
+        zone =
+            getZone iso
+
+        timestamp =
+            getTimestamp iso
+    in
+        case zone of
+            Ok z ->
+                case timestamp of
+                    Ok ts ->
+                        fromISO8601 z ts
+
+                    Err msg ->
+                        Err msg
+
+            Err msg ->
+                Err msg
+
+
+getZone : String -> Result String TimeZone
+getZone iso =
+    let
+        match =
+            head <| find (AtMost 1) zoneRegex iso
+    in
+        case match of
+            Just m ->
+                head m.submatches
+                    |> withDefault Nothing
+                    |> andThen fromName
+                    |> map Ok
+                    |> withDefault (Err ("Did not recognize time zone found in string " ++ iso ++ "."))
+
+            Nothing ->
+                Err ("No time zone information in " ++ iso ++ ".")
+
+
+getTimestamp : String -> Result String String
+getTimestamp iso =
+    let
+        match =
+            head <| split (AtMost 1) zoneRegex iso
+    in
+        case match of
+            Just m ->
+                Ok m
+
+            Nothing ->
+                Err ("No date-time information found in " ++ iso ++ ".")

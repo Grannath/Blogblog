@@ -14,3 +14,4 @@ spring:
     serialization:
       indent_output: true
       write_dates_as_timestamps: false
+      write_dates_with_zone_id: true

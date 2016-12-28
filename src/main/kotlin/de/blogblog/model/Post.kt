@@ -4,9 +4,6 @@ import de.blogblog.jooq.tables.BlPosts.BL_POSTS
 import de.blogblog.jooq.tables.BlUsers.BL_USERS
 import org.jooq.DSLContext
 import org.jooq.Record
-import java.sql.Timestamp
-import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -26,6 +23,18 @@ data class Post(val id: Int,
                              BL_USERS.USERNAME,
                              BL_POSTS.CREATED)
     }
+
+    fun shortened() =
+            copy(content = short(this.content))
+
+    private fun short(full: String) =
+            if (full.countWords() < 200) full
+            else full.firstParagraph()
+
+    private fun String.countWords() = split(' ', '\n').size
+
+    private fun String.firstParagraph() = splitToSequence("\n\n").first()
+
 }
 
 fun intoPost(zone: ZoneId) = {
@@ -35,21 +44,18 @@ fun intoPost(zone: ZoneId) = {
          rec.getContent(),
          rec.getAuthor(),
          rec.getCreated()
-                 .toInstant()
-                 .atZone(zone))
+                 .withZoneSameInstant(zone))
 }
 
-fun Record.getId() = this.getValue(BL_POSTS.ID)!!
+private fun Record.getId() = this.getValue(BL_POSTS.ID)!!
 
-fun Record.getTitle() = this.getValue(BL_POSTS.TITLE)!!
+private fun Record.getTitle() = this.getValue(BL_POSTS.TITLE)!!
 
-fun Record.getContent() = this.getValue(BL_POSTS.CONTENT)!!
+private fun Record.getContent() = this.getValue(BL_POSTS.CONTENT)!!
 
-fun Record.getAuthor() = this.getValue(BL_USERS.USERNAME)!!
+private fun Record.getAuthor() = this.getValue(BL_USERS.USERNAME)!!
 
-fun Record.getCreated() = this.getValue(BL_POSTS.CREATED)!!
-
-fun Instant.toTimestamp() = Timestamp.from(this)!!
+private fun Record.getCreated() = this.getValue(BL_POSTS.CREATED)!!
 
 fun DSLContext.selectPosts(pageSize: Int) =
         this.select(*Post.fields)
@@ -60,25 +66,25 @@ fun DSLContext.selectPosts(pageSize: Int) =
                 .orderBy(BL_POSTS.CREATED.desc())
                 .limit(pageSize)!!
 
-fun DSLContext.selectNextPosts(created: Instant, pageSize: Int) =
+fun DSLContext.selectOlderPosts(created: ZonedDateTime, pageSize: Int) =
         this.select(*Post.fields)
                 .from(BL_POSTS)
                 .join(BL_USERS)
                 .onKey(BL_POSTS.AUTHOR)
                 .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.desc())
-                .seek(created.toTimestamp())
+                .seek(created)
                 .limit(pageSize)!!
 
-fun DSLContext.selectPreviousPosts(created: Instant,
-                                   pageSize: Int) =
+fun DSLContext.selectNewerPosts(created: ZonedDateTime,
+                                pageSize: Int) =
         this.select(*Post.fields)
                 .from(BL_POSTS)
                 .join(BL_USERS)
                 .onKey(BL_POSTS.AUTHOR)
                 .where(BL_POSTS.HIDDEN.eq(false))
                 .orderBy(BL_POSTS.CREATED.asc())
-                .seek(created.toTimestamp())
+                .seek(created)
                 .limit(pageSize)!!
 
 fun DSLContext.selectPost(id: Int) =

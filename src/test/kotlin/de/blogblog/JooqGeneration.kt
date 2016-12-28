@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit4.SpringRunner
+import java.time.ZonedDateTime
 import javax.sql.DataSource
 
 /**
@@ -40,7 +41,14 @@ class JooqGeneration {
                                 Database()
                                         .withIncludes(".*")
                                         .withExcludes(flywayTable)
-                                        .withInputSchema(schemata[0]))
+                                        .withInputSchema(schemata[0])
+                                        .withForcedTypes(
+                                                ForcedType()
+                                                        .withUserType(
+                                                                ZonedDateTime::class.java.name)
+                                                        .withConverter(
+                                                                ZonedDateTimeConverter::class.java.name)
+                                                        .withTypes("TIMESTAMP.*")))
                         .withTarget(
                                 Target().withPackageName("de.blogblog.jooq")
                                         .withDirectory("src/jooq/java"))

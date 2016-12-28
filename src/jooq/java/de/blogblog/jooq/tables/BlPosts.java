@@ -4,11 +4,12 @@
 package de.blogblog.jooq.tables;
 
 
+import de.blogblog.ZonedDateTimeConverter;
 import de.blogblog.jooq.Blogblog;
 import de.blogblog.jooq.Keys;
 import de.blogblog.jooq.tables.records.BlPostsRecord;
 
-import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,7 +38,7 @@ import org.jooq.impl.TableImpl;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class BlPosts extends TableImpl<BlPostsRecord> {
 
-    private static final long serialVersionUID = 723583684;
+    private static final long serialVersionUID = -1853910749;
 
     /**
      * The reference instance of <code>blogblog.bl_posts</code>
@@ -70,7 +71,7 @@ public class BlPosts extends TableImpl<BlPostsRecord> {
     /**
      * The column <code>blogblog.bl_posts.created</code>.
      */
-    public final TableField<BlPostsRecord, Timestamp> CREATED = createField("created", org.jooq.impl.SQLDataType.TIMESTAMP.nullable(false).defaultValue(org.jooq.impl.DSL.field("now()", org.jooq.impl.SQLDataType.TIMESTAMP)), this, "");
+    public final TableField<BlPostsRecord, ZonedDateTime> CREATED = createField("created", org.jooq.impl.SQLDataType.TIMESTAMP.nullable(false).defaultValue(org.jooq.impl.DSL.field("now()", org.jooq.impl.SQLDataType.TIMESTAMP)), this, "", new ZonedDateTimeConverter());
 
     /**
      * The column <code>blogblog.bl_posts.author</code>.
