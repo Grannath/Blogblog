@@ -38,7 +38,7 @@ subscriptions model =
 
 update : Material.Msg Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    Material.update msg model
+    Material.update View msg model
 
 
 view : Model -> Html Msg

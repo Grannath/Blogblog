@@ -6,9 +6,10 @@ import Json.Decode as Json exposing (field, int, string, list)
 import List exposing (head)
 import Maybe exposing (andThen, map, withDefault)
 import Regex exposing (HowMany(AtMost), contains, find, regex, split)
-import Time.TimeZone exposing (TimeZone)
+import String exposing (join)
+import Time.TimeZone exposing (TimeZone, name)
 import Time.TimeZones exposing (fromName)
-import Time.ZonedDateTime exposing (ZonedDateTime, fromISO8601, toISO8601)
+import Time.ZonedDateTime exposing (ZonedDateTime, fromISO8601, toISO8601, timeZone)
 
 
 postsApiUrl =
@@ -23,19 +24,27 @@ getPosts set =
 getNextPosts : Settings -> Post -> Cmd Msg
 getNextPosts set post =
     let
-        url =
-            postsApiUrl ++ "/next?from=" ++ (toISO8601 post.created) ++ "&pageSize=" ++ (toString set.pageSize)
+        uri =
+            postsApiUrl
+                ++ "/next?from="
+                ++ (Http.encodeUri <| toExtendedIso post.created)
+                ++ "&pageSize="
+                ++ (toString set.pageSize)
     in
-        Http.send NextLoaded (Http.get url parsePostList)
+        Http.send NextLoaded (Http.get uri parsePostList)
 
 
 getPreviousPosts : Settings -> Post -> Cmd Msg
 getPreviousPosts set post =
     let
-        url =
-            postsApiUrl ++ "/previous?from=" ++ (toISO8601 post.created) ++ "&pageSize=" ++ (toString set.pageSize)
+        uri =
+            postsApiUrl
+                ++ "/previous?from="
+                ++ (Http.encodeUri <| toExtendedIso post.created)
+                ++ "&pageSize="
+                ++ (toString set.pageSize)
     in
-        Http.send PreviousLoaded (Http.get url parsePostList)
+        Http.send PreviousLoaded (Http.get uri parsePostList)
 
 
 getPost : Post -> Cmd Msg
@@ -136,3 +145,11 @@ getTimestamp iso =
 
             Nothing ->
                 Err ("No date-time information found in " ++ iso ++ ".")
+
+
+toExtendedIso : ZonedDateTime -> String
+toExtendedIso dateTime =
+    toISO8601 dateTime
+        ++ "["
+        ++ (name <| timeZone dateTime)
+        ++ "]"

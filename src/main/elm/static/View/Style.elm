@@ -26,6 +26,8 @@ classes li =
 type Overview
     = PostList
     | PostListNavigation
+    | NavigationNewer
+    | NavigationOlder
     | PostListTeaser
     | TeaserHeadline
     | TeaserDetails
@@ -71,6 +73,14 @@ dividerColor =
     hex "#BDBDBD"
 
 
+navigationLink =
+    mixin
+        [ cursor pointer
+        , hover
+            [ textDecoration underline ]
+        ]
+
+
 css =
     stylesheet
         [ (.) PostList
@@ -78,7 +88,14 @@ css =
             , flexDirection column
             ]
         , (.) PostListNavigation
-            [ margin auto ]
+            [ margin auto
+            , fontSize xLarge
+            , padding2 (px 7) (px 0)
+            ]
+        , (.) NavigationNewer
+            [ navigationLink ]
+        , (.) NavigationOlder
+            [ navigationLink ]
         , (.) PostListTeaser
             [ margin auto
             , width <| px 700
@@ -87,6 +104,7 @@ css =
             , borderImageWidth2 (px 5) (px 0)
             , borderStyle solid
             , borderColor transparent
+            , cursor pointer
             , nthChild
                 "odd"
                 [ property
@@ -97,7 +115,6 @@ css =
                 [ property
                     "border-image"
                     "linear-gradient(to right, transparent 0%, #455A64 10%, #455A64 90%, transparent 100%) 1"
-                , cursor pointer
                 ]
             ]
         , (.) TeaserCreated

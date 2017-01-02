@@ -56,10 +56,14 @@ postNavigation =
     nav
         [ class PostListNavigation ]
         [ a
-            [ onClick AppModel.LoadPrevious ]
-            [ text "Newer" ]
+            [ onClick AppModel.LoadPrevious
+            , class NavigationNewer
+            ]
+            [ text "< Newer" ]
         , text " | "
         , a
-            [ onClick AppModel.LoadNext ]
-            [ text "Older" ]
+            [ onClick AppModel.LoadNext
+            , class NavigationOlder
+            ]
+            [ text "Older >" ]
         ]
