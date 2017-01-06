@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Html
+import Navigation exposing (Location)
 import View.View as View exposing (Model, Msg(..), view)
 import AppModel
 import AppUpdate
@@ -8,7 +8,8 @@ import AppUpdate
 
 
 main =
-    Html.program
+    Navigation.program
+        (App << AppUpdate.goTo)
         { init = init
         , view = view
         , update = update
@@ -16,9 +17,9 @@ main =
         }
 
 
-init : ( Model, Cmd Msg )
-init =
-    AppUpdate.init |> View.init
+init : Location -> ( Model, Cmd Msg )
+init loc =
+    AppUpdate.init loc |> View.init
 
 
 

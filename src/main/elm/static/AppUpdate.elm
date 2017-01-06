@@ -1,20 +1,39 @@
-module AppUpdate exposing (update, init, subscriptions)
+module AppUpdate exposing (update, init, subscriptions, goTo)
 
+import Navigation
 import AppModel exposing (Model, Msg(..), Page(..), Post, Settings)
+import AppRouting
 import Api exposing (..)
 import List exposing (append, head, reverse, take)
 import Maybe exposing (withDefault)
+import Http
 
 
-init : ( Model, Cmd Msg )
-init =
+
+matchLocation : Navigation.Location -> AppModel.Location
+matchLocation {pathname, search} =
+    AppRouting.match (pathname ++ search)
+        |> Maybe.withDefault AppModel.NotFound
+
+
+goTo : Navigation.Location -> Msg
+goTo = matchLocation >> GoTo
+
+
+init : Navigation.Location -> ( Model, Cmd Msg )
+init loc =
     let
         initSet =
             (Settings 10)
+
+
+        appLoc =
+            matchLocation loc
+
+        initModel =
+            Model initSet appLoc (Loading Nothing)
     in
-        ( Model initSet (Loading Nothing)
-        , getPosts initSet
-        )
+        update (GoTo appLoc) { app = initModel }
 
 
 subscriptions : { md | app : Model } -> Sub Msg
@@ -24,33 +43,82 @@ subscriptions { app } =
 
 update : Msg -> { md | app : Model } -> ( Model, Cmd Msg )
 update msg { app } =
-    case msg of
-        LoadNext ->
-            loadNext app
+    let
+        setPage page =
+            { app | page = page }
+    in
+        case msg of
+            LoadNext ->
+                loadNext app
 
-        NextLoaded (Ok list) ->
-            nextLoaded app list
+            NextLoaded (Ok list) ->
+                nextLoaded app list
 
-        LoadPrevious ->
-            loadPrevious app
+            LoadPrevious ->
+                loadPrevious app
 
-        PreviousLoaded (Ok list) ->
-            previousLoaded app list
+            PreviousLoaded (Ok list) ->
+                previousLoaded app list
 
-        LoadPost post ->
-            ( { app | page = Loading (Just app.page) }, getPost post )
+            LoadPost post ->
+                loadPost app post.id
 
-        PostLoaded (Ok post) ->
-            ( { app | page = Detailed post }, Cmd.none )
+            PostLoaded (Ok post) ->
+                ( setPage (Detailed post), Cmd.none )
 
-        NextLoaded (Err error) ->
-            ( { app | page = LoadError error }, Cmd.none )
+            NextLoaded (Err error) ->
+                ( setPage (LoadError error), Cmd.none )
 
-        PreviousLoaded (Err error) ->
-            ( { app | page = LoadError error }, Cmd.none )
+            PreviousLoaded (Err error) ->
+                ( setPage (LoadError error), Cmd.none )
 
-        PostLoaded (Err error) ->
-            ( { app | page = LoadError error }, Cmd.none )
+            PostLoaded (Err error) ->
+                ( setPage (LoadError error), Cmd.none )
+
+            GoTo AppModel.Home ->
+                loadPosts app
+
+            GoTo (AppModel.SinglePost id) ->
+                loadPost app id
+
+            GoTo _ ->
+                ( setPage (LoadError (Http.BadUrl "")), Cmd.none )
+
+
+
+assertLocation : Model -> AppModel.Location -> (Model, Cmd Msg)
+assertLocation model loc =
+    if model.location == loc then
+        (model, Cmd.none)
+    else
+        ( { model | location = loc }, Navigation.newUrl (AppRouting.toUri loc) )
+
+
+
+loadPosts : Model -> ( Model, Cmd Msg )
+loadPosts app =
+    let
+        (mod, cmd) = assertLocation app AppModel.Home
+    in
+        ( { mod | page = Loading (Just mod.page) }
+        , Cmd.batch
+            [ getPosts mod.settings
+            , cmd
+            ]
+        )
+
+
+loadPost : Model -> Int -> ( Model, Cmd Msg )
+loadPost app id =
+    let
+        (mod, cmd) = assertLocation app (AppModel.SinglePost id)
+    in
+        ( { mod | page = Loading (Just mod.page) }
+        , Cmd.batch
+            [ getPost id
+            , cmd
+            ]
+        )
 
 
 loadNext : Model -> ( Model, Cmd Msg )

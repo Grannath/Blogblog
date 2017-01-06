@@ -47,11 +47,11 @@ getPreviousPosts set post =
         Http.send PreviousLoaded (Http.get uri parsePostList)
 
 
-getPost : Post -> Cmd Msg
-getPost post =
+getPost : Int -> Cmd Msg
+getPost id =
     let
         url =
-            postsApiUrl ++ "/" ++ (toString post.id)
+            postsApiUrl ++ "/" ++ (toString id)
     in
         Http.send PostLoaded (Http.get url parsePost)
 
