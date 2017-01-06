@@ -2,7 +2,7 @@ module View.Header exposing (header)
 
 import AppModel exposing (Model, Msg)
 import Html exposing (..)
-import View.Style exposing (class, Header(..))
+import View.Style exposing (class, HeaderType(..))
 
 
 header : Model -> List (Html Msg)
@@ -13,7 +13,7 @@ header model =
 pageTitle : Model -> Html AppModel.Msg
 pageTitle model =
     div
-        [ class HeaderArea ]
+        [ class HeaderBlock ]
         [ h1
             [ class HeaderHeadline ]
             [ text "Blogblog" ]

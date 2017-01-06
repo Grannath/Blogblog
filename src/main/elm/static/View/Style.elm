@@ -1,4 +1,12 @@
-module View.Style exposing (class, classes, styleTag, Overview(..), Header(..))
+module View.Style
+    exposing
+        ( class
+        , classes
+        , styleTag
+        , PostListType(..)
+        , FullPostType(..)
+        , HeaderType(..)
+        )
 
 import Css exposing (..)
 import Css.Elements exposing (..)
@@ -23,8 +31,8 @@ classes li =
     cssHelpers.class li
 
 
-type Overview
-    = PostList
+type PostListType
+    = PostListBlock
     | PostListNavigation
     | NavigationNewer
     | NavigationOlder
@@ -36,8 +44,18 @@ type Overview
     | TeaserContent
 
 
-type Header
-    = HeaderArea
+type FullPostType
+    = FullPostBlock
+    | FullPost
+    | PostHeadline
+    | PostDetails
+    | PostAuthor
+    | PostCreated
+    | PostContent
+
+
+type HeaderType
+    = HeaderBlock
     | HeaderHeadline
 
 
@@ -73,56 +91,109 @@ dividerColor =
     hex "#BDBDBD"
 
 
-navigationLink =
-    mixin
-        [ cursor pointer
-        , hover
-            [ textDecoration underline ]
-        ]
-
-
 css =
-    stylesheet
-        [ (.) PostList
-            [ displayFlex
-            , flexDirection column
-            ]
-        , (.) PostListNavigation
-            [ margin auto
-            , fontSize xLarge
-            , padding2 (px 7) (px 0)
-            ]
-        , (.) NavigationNewer
-            [ navigationLink ]
-        , (.) NavigationOlder
-            [ navigationLink ]
-        , (.) PostListTeaser
-            [ margin auto
-            , width <| px 700
-            , paddingLeft <| px 50
-            , paddingRight <| px 50
-            , borderImageWidth2 (px 5) (px 0)
-            , borderStyle solid
-            , borderColor transparent
-            , cursor pointer
-            , nthChild
-                "odd"
-                [ property
-                    "background-image"
-                    "linear-gradient(to right, transparent 0%, #E1E7EA 10%, #E1E7EA 90%, transparent 100%)"
+    let
+        navigationLink =
+            mixin
+                [ cursor pointer
+                , hover
+                    [ textDecoration underline ]
                 ]
-            , hover
-                [ property
-                    "border-image"
-                    "linear-gradient(to right, transparent 0%, #455A64 10%, #455A64 90%, transparent 100%) 1"
+
+        flexColumn =
+            mixin
+                [ displayFlex
+                , flexDirection column
+                ]
+
+        flexRow =
+            mixin
+                [ displayFlex
+                , flexDirection row
+                , flexWrap noWrap
+                ]
+
+        flexChildCentered =
+            margin auto
+
+        headerStyles =
+            [ (.) HeaderHeadline
+                [ paddingLeft (em 1) ]
+            ]
+
+        postListStyles =
+            [ (.) PostListBlock
+                [ flexColumn ]
+            , (.) PostListNavigation
+                [ flexChildCentered
+                , fontSize xLarge
+                , padding2 (em 1) (em 0)
+                ]
+            , (.) NavigationNewer
+                [ navigationLink ]
+            , (.) NavigationOlder
+                [ navigationLink ]
+            , (.) PostListTeaser
+                [ flexChildCentered
+                , width (em 55)
+                , paddingLeft (em 5)
+                , paddingRight (em 5)
+                , borderImageWidth2 (em 1) (em 1)
+                , borderStyle solid
+                , borderColor transparent
+                , cursor pointer
+                , nthChild
+                    "odd"
+                    [ property
+                        "background-image"
+                        "linear-gradient(to right, transparent 0%, #E1E7EA 10%, #E1E7EA 90%, transparent 100%)"
+                    ]
+                , hover
+                    [ property
+                        "border-image"
+                        "linear-gradient(to right, transparent 0%, #455A64 10%, #455A64 90%, transparent 100%) 1"
+                    ]
+                ]
+            , (.) TeaserDetails
+                [ flexRow
+                , paddingBottom (em 1)
+                ]
+            , (.) TeaserAuthor
+                [ marginRight auto
+                , marginLeft (em 0)
+                ]
+            , (.) TeaserCreated
+                [ marginLeft auto
+                , marginRight (em 0)
                 ]
             ]
-        , (.) TeaserCreated
-            [ textAlign right
+
+        fullPostStyles =
+            [ (.) FullPostBlock
+                [ flexColumn ]
+            , (.) FullPost
+                [ flexChildCentered
+                , width (em 65)
+                ]
+            , (.) PostDetails
+                [ flexRow
+                , paddingBottom (em 1.5)
+                ]
+            , (.) PostAuthor
+                [ marginRight auto
+                , marginLeft (em 0)
+                ]
+            , (.) PostCreated
+                [ marginLeft auto
+                , marginRight (em 0)
+                ]
             ]
-        , (.) HeaderHeadline
-            [ paddingLeft <| px 30 ]
-        ]
+    in
+        (stylesheet << List.concat)
+            [ headerStyles
+            , postListStyles
+            , fullPostStyles
+            ]
 
 
 styleTag =

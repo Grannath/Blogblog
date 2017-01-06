@@ -1,7 +1,7 @@
 module View.PostOverview exposing (overview)
 
 import List exposing (append)
-import View.Style exposing (class, Overview(..))
+import View.Style exposing (class, PostListType(..))
 import AppModel exposing (Post)
 import Html exposing (..)
 import Html.Events exposing (..)
@@ -16,7 +16,7 @@ overview posts =
             postNavigation
     in
         article
-            [ class PostList ]
+            [ class PostListBlock ]
             (append
                 (links
                     :: (List.map postTeaser posts)
