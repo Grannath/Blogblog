@@ -1,11 +1,15 @@
 package de.blogblog
 
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.web.ErrorViewResolver
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.core.convert.converter.Converter
+import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+import org.springframework.web.servlet.ModelAndView
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -40,6 +44,17 @@ open class BlogblogApplication {
         }
     }
 
+    @Bean open fun notFoundHandler(): ErrorViewResolver {
+        val logger = LoggerFactory.getLogger("NotFoundHandler")
+        return ErrorViewResolver { request, status, model ->
+            if (status == HttpStatus.NOT_FOUND) {
+                logger.warn("404 error caught, redirecting to index.html")
+                ModelAndView("index.html")
+            } else {
+                null
+            }
+        }
+    }
 
 }
 
