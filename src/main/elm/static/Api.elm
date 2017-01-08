@@ -1,15 +1,10 @@
-module Api exposing (getPosts, getPreviousPosts, getNextPosts, getPost)
+module Api exposing (getPosts, getNewerPosts, getOlderPosts, getSinglePost)
 
-import AppModel exposing (Settings, Post, Msg(..))
+import AppModel exposing (Settings, Post, Msg(Api), ApiResponse(..))
 import Http exposing (..)
 import Json.Decode as Json exposing (field, int, string, list)
-import List exposing (head)
-import Maybe exposing (andThen, map, withDefault)
-import Regex exposing (HowMany(AtMost), contains, find, regex, split)
-import String exposing (join)
-import Time.TimeZone exposing (TimeZone, name)
-import Time.TimeZones exposing (fromName)
-import Time.ZonedDateTime exposing (ZonedDateTime, fromISO8601, toISO8601, timeZone)
+import Time.ZonedDateTime exposing (ZonedDateTime)
+import TimeExtra exposing (fromExtendedIso, toExtendedIso)
 
 
 postsApiUrl =
@@ -18,42 +13,42 @@ postsApiUrl =
 
 getPosts : Settings -> Cmd Msg
 getPosts set =
-    Http.send NextLoaded (Http.get postsApiUrl parsePostList)
+    Http.send (Api << OlderLoaded) (Http.get postsApiUrl parsePostList)
 
 
-getNextPosts : Settings -> Post -> Cmd Msg
-getNextPosts set post =
+getOlderPosts : Settings -> ZonedDateTime -> Cmd Msg
+getOlderPosts set from =
     let
         uri =
             postsApiUrl
                 ++ "/next?from="
-                ++ (Http.encodeUri <| toExtendedIso post.created)
+                ++ (Http.encodeUri <| toExtendedIso from)
                 ++ "&pageSize="
                 ++ (toString set.pageSize)
     in
-        Http.send NextLoaded (Http.get uri parsePostList)
+        Http.send (Api << OlderLoaded) (Http.get uri parsePostList)
 
 
-getPreviousPosts : Settings -> Post -> Cmd Msg
-getPreviousPosts set post =
+getNewerPosts : Settings -> ZonedDateTime -> Cmd Msg
+getNewerPosts set from =
     let
         uri =
             postsApiUrl
                 ++ "/previous?from="
-                ++ (Http.encodeUri <| toExtendedIso post.created)
+                ++ (Http.encodeUri <| toExtendedIso from)
                 ++ "&pageSize="
                 ++ (toString set.pageSize)
     in
-        Http.send PreviousLoaded (Http.get uri parsePostList)
+        Http.send (Api << NewerLoaded) (Http.get uri parsePostList)
 
 
-getPost : Int -> Cmd Msg
-getPost id =
+getSinglePost : Int -> Cmd Msg
+getSinglePost id =
     let
         url =
             postsApiUrl ++ "/" ++ (toString id)
     in
-        Http.send PostLoaded (Http.get url parsePost)
+        Http.send (Api << PostLoaded) (Http.get url parsePost)
 
 
 
@@ -87,69 +82,3 @@ date =
                     Err msg ->
                         Json.fail msg
             )
-
-
-zoneRegex =
-    regex "\\[(.*)\\]"
-
-
-fromExtendedIso : String -> Result String ZonedDateTime
-fromExtendedIso iso =
-    let
-        zone =
-            getZone iso
-
-        timestamp =
-            getTimestamp iso
-    in
-        case zone of
-            Ok z ->
-                case timestamp of
-                    Ok ts ->
-                        fromISO8601 z ts
-
-                    Err msg ->
-                        Err msg
-
-            Err msg ->
-                Err msg
-
-
-getZone : String -> Result String TimeZone
-getZone iso =
-    let
-        match =
-            head <| find (AtMost 1) zoneRegex iso
-    in
-        case match of
-            Just m ->
-                head m.submatches
-                    |> withDefault Nothing
-                    |> andThen fromName
-                    |> map Ok
-                    |> withDefault (Err ("Did not recognize time zone found in string " ++ iso ++ "."))
-
-            Nothing ->
-                Err ("No time zone information in " ++ iso ++ ".")
-
-
-getTimestamp : String -> Result String String
-getTimestamp iso =
-    let
-        match =
-            head <| split (AtMost 1) zoneRegex iso
-    in
-        case match of
-            Just m ->
-                Ok m
-
-            Nothing ->
-                Err ("No date-time information found in " ++ iso ++ ".")
-
-
-toExtendedIso : ZonedDateTime -> String
-toExtendedIso dateTime =
-    toISO8601 dateTime
-        ++ "["
-        ++ (name <| timeZone dateTime)
-        ++ "]"

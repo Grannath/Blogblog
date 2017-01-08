@@ -2,7 +2,7 @@ module View.PostOverview exposing (overview)
 
 import List exposing (append)
 import View.Style exposing (class, PostListType(..))
-import AppModel exposing (Post)
+import AppModel exposing (Post, UserNavigation(..))
 import Html exposing (..)
 import Html.Events exposing (..)
 import Markdown
@@ -29,7 +29,7 @@ postTeaser : Post -> Html AppModel.Msg
 postTeaser post =
     section
         [ class PostListTeaser
-        , onClick (AppModel.LoadPost post)
+        , onClick (AppModel.User (LoadPost post))
         ]
         [ h2
             [ class TeaserHeadline
@@ -56,13 +56,13 @@ postNavigation =
     nav
         [ class PostListNavigation ]
         [ a
-            [ onClick AppModel.LoadPrevious
+            [ onClick (AppModel.User LoadNewer)
             , class NavigationNewer
             ]
             [ text "< Newer" ]
         , text " | "
         , a
-            [ onClick AppModel.LoadNext
+            [ onClick (AppModel.User LoadOlder)
             , class NavigationOlder
             ]
             [ text "Older >" ]

@@ -74,7 +74,7 @@ mainContent model =
         Detailed post ->
             [ FullPost.fullPost post ]
 
-        LoadError error ->
+        ErrorPage error ->
             [ ErrorView.loadError error ]
     )
         |> toFullMsg

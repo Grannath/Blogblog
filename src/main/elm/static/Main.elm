@@ -30,7 +30,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         App appMsg ->
-            AppUpdate.update appMsg model |> map model
+            AppUpdate.update appMsg model.app |> map model
 
         View mdlMsg ->
             View.update mdlMsg model

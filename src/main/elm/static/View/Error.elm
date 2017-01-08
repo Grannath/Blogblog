@@ -1,18 +1,28 @@
 module View.Error exposing (loadError)
 
-import AppModel exposing (Model, Msg)
+import AppModel exposing (Model, Msg, Error(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
 
 
-loadError : Http.Error -> Html Msg
+loadError : Error -> Html Msg
 loadError error =
     text <| errorText error
 
 
-errorText : Http.Error -> String
-errorText error =
+errorText : Error -> String
+errorText err =
+    case err of
+        UnknownPage txt ->
+            "The page " ++ txt ++ " is unknown."
+
+        LoadError httpErr ->
+            httpErrorText httpErr
+
+
+httpErrorText : Http.Error -> String
+httpErrorText error =
     case error of
         Http.BadUrl url ->
             "Bad URL: " ++ url

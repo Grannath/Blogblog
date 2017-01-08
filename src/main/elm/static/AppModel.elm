@@ -1,7 +1,18 @@
 module AppModel exposing (..)
 
 import Time.ZonedDateTime exposing (ZonedDateTime)
-import Http exposing (Error)
+import Http
+
+
+type alias Model =
+    { settings : Settings
+    , location : SiteMap
+    , page : Page
+    }
+
+
+
+-- Content Records
 
 
 type alias Post =
@@ -17,33 +28,77 @@ type alias Settings =
     { pageSize : Int }
 
 
-type Location
+
+-- Site Routing
+
+
+type SiteMap
     = Home
-    | PostsNewerThan ZonedDateTime
-    | PostsOlderThan ZonedDateTime
+    | PostSearch PostQuery
     | SinglePost Int
-    | NotFound
+    | Unknown String
+
+
+type alias PostQuery =
+    { pageSize : Maybe Int
+    , from : Maybe PostOffset
+    }
+
+
+type PostOffset
+    = NewerThan ZonedDateTime
+    | OlderThan ZonedDateTime
+
+
+
+-- Site Pages
 
 
 type Page
     = Overview (List Post)
     | Detailed Post
     | Loading (Maybe Page)
-    | LoadError Error
+    | ErrorPage Error
 
 
-type alias Model =
-    { settings : Settings
-    , location : Location
-    , page : Page
-    }
+type Error
+    = UnknownPage String
+    | LoadError Http.Error
+
+
+
+-- Messages
 
 
 type Msg
-    = GoTo Location
-    | LoadNext
-    | LoadPrevious
-    | NextLoaded (Result Http.Error (List Post))
-    | PreviousLoaded (Result Http.Error (List Post))
+    = Routing RouteChanges
+    | User UserNavigation
+    | Api ApiResponse
+
+
+
+-- User navigation messages
+
+
+type UserNavigation
+    = LoadOlder
+    | LoadNewer
     | LoadPost Post
+
+
+
+-- API response messages
+
+
+type ApiResponse
+    = OlderLoaded (Result Http.Error (List Post))
+    | NewerLoaded (Result Http.Error (List Post))
     | PostLoaded (Result Http.Error Post)
+
+
+
+-- Routing messages
+
+
+type RouteChanges
+    = GoTo SiteMap

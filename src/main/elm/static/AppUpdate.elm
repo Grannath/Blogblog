@@ -1,39 +1,33 @@
 module AppUpdate exposing (update, init, subscriptions, goTo)
 
-import Navigation
-import AppModel exposing (Model, Msg(..), Page(..), Post, Settings)
-import AppRouting
+import AppModel exposing (..)
+import AppRouting exposing (Location)
 import Api exposing (..)
 import List exposing (append, head, reverse, take)
 import Maybe exposing (withDefault)
 import Http
+import Navigation exposing (newUrl)
+import Time.ZonedDateTime exposing (ZonedDateTime)
 
 
-
-matchLocation : Navigation.Location -> AppModel.Location
-matchLocation {pathname, search} =
-    AppRouting.match (pathname ++ search)
-        |> Maybe.withDefault AppModel.NotFound
+goTo : Location a -> Msg
+goTo =
+    AppRouting.match >> GoTo >> Routing
 
 
-goTo : Navigation.Location -> Msg
-goTo = matchLocation >> GoTo
-
-
-init : Navigation.Location -> ( Model, Cmd Msg )
+init : Location a -> MCM
 init loc =
     let
         initSet =
             (Settings 10)
 
-
-        appLoc =
-            matchLocation loc
+        siteMap =
+            AppRouting.match loc
 
         initModel =
-            Model initSet appLoc (Loading Nothing)
+            Model initSet siteMap (Loading Nothing)
     in
-        update (GoTo appLoc) { app = initModel }
+        update (goTo loc) initModel
 
 
 subscriptions : { md | app : Model } -> Sub Msg
@@ -41,105 +35,179 @@ subscriptions { app } =
     Sub.none
 
 
-update : Msg -> { md | app : Model } -> ( Model, Cmd Msg )
-update msg { app } =
+type alias MCM =
+    ( Model, Cmd Msg )
+
+
+update : Msg -> Model -> MCM
+update msg model =
+    case msg of
+        User nav ->
+            userNavigation nav model
+
+        Api api ->
+            apiResponse api model
+
+        Routing rt ->
+            routeChange rt model
+
+
+userNavigation : UserNavigation -> Model -> MCM
+userNavigation nav model =
     let
-        setPage page =
-            { app | page = page }
+        goToLocation loc =
+            newUrl (AppRouting.toUri loc)
+
+        updateLocation loc ( mdl, cmd ) =
+            if mdl.location == loc then
+                ( mdl, cmd )
+            else
+                ( { mdl | location = loc }
+                , Cmd.batch [ cmd, goToLocation loc ]
+                )
+
+        oldest =
+            getPostList model
+                |> reverse
+                |> head
+                |> Maybe.map .created
+
+        newest =
+            getPostList model
+                |> head
+                |> Maybe.map .created
+
+        olderQuery =
+            PostQuery
+                (Just model.settings.pageSize)
+                (oldest
+                    |> Maybe.map OlderThan
+                )
+
+        newerQuery =
+            PostQuery
+                (Just model.settings.pageSize)
+                (newest
+                    |> Maybe.map NewerThan
+                )
     in
-        case msg of
-            LoadNext ->
-                loadNext app
+        case nav of
+            LoadOlder ->
+                updateLocation
+                    (PostSearch olderQuery)
+                    (oldest
+                        |> Maybe.map (loadOlder model)
+                        |> Maybe.withDefault (loadPosts model)
+                    )
 
-            NextLoaded (Ok list) ->
-                nextLoaded app list
-
-            LoadPrevious ->
-                loadPrevious app
-
-            PreviousLoaded (Ok list) ->
-                previousLoaded app list
+            LoadNewer ->
+                updateLocation
+                    (PostSearch newerQuery)
+                    (newest
+                        |> Maybe.map (loadNewer model)
+                        |> Maybe.withDefault (loadPosts model)
+                    )
 
             LoadPost post ->
-                loadPost app post.id
-
-            PostLoaded (Ok post) ->
-                ( setPage (Detailed post), Cmd.none )
-
-            NextLoaded (Err error) ->
-                ( setPage (LoadError error), Cmd.none )
-
-            PreviousLoaded (Err error) ->
-                ( setPage (LoadError error), Cmd.none )
-
-            PostLoaded (Err error) ->
-                ( setPage (LoadError error), Cmd.none )
-
-            GoTo AppModel.Home ->
-                loadPosts app
-
-            GoTo (AppModel.SinglePost id) ->
-                loadPost app id
-
-            GoTo _ ->
-                ( setPage (LoadError (Http.BadUrl "")), Cmd.none )
+                updateLocation
+                    (SinglePost post.id)
+                    (loadSinglePost model post.id)
 
 
+apiResponse : ApiResponse -> Model -> MCM
+apiResponse api model =
+    case api of
+        OlderLoaded (Ok list) ->
+            olderLoaded model list
 
-assertLocation : Model -> AppModel.Location -> (Model, Cmd Msg)
-assertLocation model loc =
-    if model.location == loc then
-        (model, Cmd.none)
-    else
-        ( { model | location = loc }, Navigation.newUrl (AppRouting.toUri loc) )
+        NewerLoaded (Ok list) ->
+            newerLoaded model list
+
+        PostLoaded (Ok post) ->
+            postLoaded model post
+
+        OlderLoaded (Err err) ->
+            loadError model err
+
+        NewerLoaded (Err err) ->
+            loadError model err
+
+        PostLoaded (Err err) ->
+            loadError model err
 
 
-
-loadPosts : Model -> ( Model, Cmd Msg )
-loadPosts app =
+routeChange : RouteChanges -> Model -> MCM
+routeChange rt model =
     let
-        (mod, cmd) = assertLocation app AppModel.Home
+        unknown uri =
+            { model | page = ErrorPage (UnknownPage uri) }
     in
-        ( { mod | page = Loading (Just mod.page) }
-        , Cmd.batch
-            [ getPosts mod.settings
-            , cmd
-            ]
-        )
+        case rt of
+            GoTo (Unknown uri) ->
+                ( unknown uri, Cmd.none )
+
+            GoTo Home ->
+                loadPosts model
+
+            GoTo (SinglePost id) ->
+                loadSinglePost model id
+
+            GoTo (PostSearch pq) ->
+                searchForPosts model pq
 
 
-loadPost : Model -> Int -> ( Model, Cmd Msg )
-loadPost app id =
-    let
-        (mod, cmd) = assertLocation app (AppModel.SinglePost id)
-    in
-        ( { mod | page = Loading (Just mod.page) }
-        , Cmd.batch
-            [ getPost id
-            , cmd
-            ]
-        )
-
-
-loadNext : Model -> ( Model, Cmd Msg )
-loadNext model =
+loadPosts : Model -> MCM
+loadPosts model =
     ( { model | page = Loading (Just model.page) }
-    , getPostList model
-        |> reverse
-        |> head
-        |> Maybe.map (getNextPosts model.settings)
-        |> withDefault (getPosts model.settings)
+    , getPosts model.settings
     )
 
 
-loadPrevious : Model -> ( Model, Cmd Msg )
-loadPrevious model =
+loadSinglePost : Model -> Int -> MCM
+loadSinglePost model id =
     ( { model | page = Loading (Just model.page) }
-    , getPostList model
-        |> head
-        |> Maybe.map (getPreviousPosts model.settings)
-        |> withDefault (getPosts model.settings)
+    , getSinglePost id
     )
+
+
+loadOlder : Model -> ZonedDateTime -> MCM
+loadOlder model zdt =
+    ( { model | page = Loading (Just model.page) }
+    , getOlderPosts model.settings zdt
+    )
+
+
+loadNewer : Model -> ZonedDateTime -> MCM
+loadNewer model zdt =
+    ( { model | page = Loading (Just model.page) }
+    , getNewerPosts model.settings zdt
+    )
+
+
+searchForPosts : Model -> PostQuery -> MCM
+searchForPosts model query =
+    let
+        updateSettings sett =
+            { sett | pageSize = query.pageSize |> Maybe.withDefault sett.pageSize }
+
+        updatedModel =
+            { model
+                | page = Loading (Just model.page)
+                , settings = updateSettings model.settings
+            }
+
+        loadResults mdl =
+            case query.from of
+                Nothing ->
+                    loadPosts mdl
+
+                Just (NewerThan zdt) ->
+                    loadNewer mdl zdt
+
+                Just (OlderThan zdt) ->
+                    loadOlder mdl zdt
+    in
+        loadResults updatedModel
 
 
 getPostList : Model -> List Post
@@ -155,8 +223,8 @@ getPostList model =
             []
 
 
-previousLoaded : Model -> List Post -> ( Model, Cmd Msg )
-previousLoaded model list =
+newerLoaded : Model -> List Post -> MCM
+newerLoaded model list =
     ( list
         ++ (getPostList model)
         |> takeFirst model.settings.pageSize
@@ -165,12 +233,26 @@ previousLoaded model list =
     )
 
 
-nextLoaded : Model -> List Post -> ( Model, Cmd Msg )
-nextLoaded model list =
+olderLoaded : Model -> List Post -> MCM
+olderLoaded model list =
     ( (getPostList model)
         ++ list
         |> takeLast model.settings.pageSize
         |> setPostList model
+    , Cmd.none
+    )
+
+
+postLoaded : Model -> Post -> MCM
+postLoaded model post =
+    ( { model | page = Detailed post }
+    , Cmd.none
+    )
+
+
+loadError : Model -> Http.Error -> MCM
+loadError model err =
+    ( { model | page = ErrorPage (LoadError err) }
     , Cmd.none
     )
 
