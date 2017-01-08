@@ -1,11 +1,17 @@
 module View.Placeholder exposing (loading)
 
 import Html exposing (..)
-import Html.Attributes exposing (..)
+import Material.Spinner exposing (..)
+import View.Style exposing (..)
 
 
 loading : Html a
 loading =
     article
-        [ class "pageplaceholder" ]
-        [ text "Lädt..." ]
+        [ class PlaceholderBlock ]
+        [ div
+            [ class PlaceholderSpinner ]
+            [ spinner
+                [ active True ]
+            ]
+        ]

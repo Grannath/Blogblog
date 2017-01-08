@@ -6,6 +6,7 @@ module View.Style
         , PostListType(..)
         , FullPostType(..)
         , HeaderType(..)
+        , PlaceholderType(..)
         )
 
 import Css exposing (..)
@@ -57,6 +58,11 @@ type FullPostType
 type HeaderType
     = HeaderBlock
     | HeaderHeadline
+
+
+type PlaceholderType
+    = PlaceholderBlock
+    | PlaceholderSpinner
 
 
 darkPrimaryColor =
@@ -188,11 +194,26 @@ css =
                 , marginRight (em 0)
                 ]
             ]
+
+        placeholderStyles =
+            [ (.) PlaceholderBlock
+                [ displayFlex
+                , alignItems center
+                , property
+                    "justify-content"
+                    "center"
+                , minHeight (em 10)
+                ]
+            , (.) PlaceholderSpinner
+                [
+                ]
+            ]
     in
         (stylesheet << List.concat)
             [ headerStyles
             , postListStyles
             , fullPostStyles
+            , placeholderStyles
             ]
 
 
