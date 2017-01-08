@@ -21,11 +21,8 @@ init loc =
         initSet =
             (Settings 10)
 
-        siteMap =
-            AppRouting.match loc
-
         initModel =
-            Model initSet siteMap (Loading Nothing)
+            Model initSet (Unknown "") (Loading Nothing)
     in
         update (goTo loc) initModel
 
@@ -141,19 +138,27 @@ routeChange rt model =
     let
         unknown uri =
             { model | page = ErrorPage (UnknownPage uri) }
+
+        loc =
+            case rt of
+                GoTo lc ->
+                    lc
     in
-        case rt of
-            GoTo (Unknown uri) ->
-                ( unknown uri, Cmd.none )
+        if model.location == loc then
+            ( model, Cmd.none )
+        else
+            case loc of
+                Unknown uri ->
+                    ( unknown uri, Cmd.none )
 
-            GoTo Home ->
-                loadPosts model
+                Home ->
+                    loadPosts model
 
-            GoTo (SinglePost id) ->
-                loadSinglePost model id
+                SinglePost id ->
+                    loadSinglePost model id
 
-            GoTo (PostSearch pq) ->
-                searchForPosts model pq
+                PostSearch pq ->
+                    searchForPosts model pq
 
 
 loadPosts : Model -> MCM
