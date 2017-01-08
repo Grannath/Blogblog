@@ -48,7 +48,7 @@ open class BlogblogApplication {
         val logger = LoggerFactory.getLogger("NotFoundHandler")
         return ErrorViewResolver { request, status, model ->
             if (status == HttpStatus.NOT_FOUND) {
-                logger.warn("404 error caught, redirecting to index.html")
+                logger.debug("404 error caught, redirecting to index.html")
                 ModelAndView("index.html")
             } else {
                 null
