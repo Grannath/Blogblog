@@ -42,15 +42,16 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<BlPostsRecord> BL_POSTS_PKEY = UniqueKeys0.BL_POSTS_PKEY;
-    public static final UniqueKey<BlUsersRecord> BL_USERS_PKEY = UniqueKeys0.BL_USERS_PKEY;
-    public static final UniqueKey<BlUsersRecord> BL_USERS_USERNAME_KEY = UniqueKeys0.BL_USERS_USERNAME_KEY;
+    public static final UniqueKey<BlPostsRecord> PK_POSTS = UniqueKeys0.PK_POSTS;
+    public static final UniqueKey<BlPostsRecord> UQ_POSTS_STATIC_LINK = UniqueKeys0.UQ_POSTS_STATIC_LINK;
+    public static final UniqueKey<BlUsersRecord> PK_USERS = UniqueKeys0.PK_USERS;
+    public static final UniqueKey<BlUsersRecord> UQ_USERS_USERNAME = UniqueKeys0.UQ_USERS_USERNAME;
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<BlPostsRecord, BlUsersRecord> BL_POSTS__BL_POSTS_AUTHOR_FKEY = ForeignKeys0.BL_POSTS__BL_POSTS_AUTHOR_FKEY;
+    public static final ForeignKey<BlPostsRecord, BlUsersRecord> BL_POSTS__FK_POSTS_AUTHOR = ForeignKeys0.BL_POSTS__FK_POSTS_AUTHOR;
 
     // -------------------------------------------------------------------------
     // [#1459] distribute members to avoid static initialisers > 64kb
@@ -62,12 +63,13 @@ public class Keys {
     }
 
     private static class UniqueKeys0 extends AbstractKeys {
-        public static final UniqueKey<BlPostsRecord> BL_POSTS_PKEY = createUniqueKey(BlPosts.BL_POSTS, "bl_posts_pkey", BlPosts.BL_POSTS.ID);
-        public static final UniqueKey<BlUsersRecord> BL_USERS_PKEY = createUniqueKey(BlUsers.BL_USERS, "bl_users_pkey", BlUsers.BL_USERS.ID);
-        public static final UniqueKey<BlUsersRecord> BL_USERS_USERNAME_KEY = createUniqueKey(BlUsers.BL_USERS, "bl_users_username_key", BlUsers.BL_USERS.USERNAME);
+        public static final UniqueKey<BlPostsRecord> PK_POSTS = createUniqueKey(BlPosts.BL_POSTS, "pk_posts", BlPosts.BL_POSTS.ID);
+        public static final UniqueKey<BlPostsRecord> UQ_POSTS_STATIC_LINK = createUniqueKey(BlPosts.BL_POSTS, "uq_posts_static_link", BlPosts.BL_POSTS.STATIC_LINK);
+        public static final UniqueKey<BlUsersRecord> PK_USERS = createUniqueKey(BlUsers.BL_USERS, "pk_users", BlUsers.BL_USERS.ID);
+        public static final UniqueKey<BlUsersRecord> UQ_USERS_USERNAME = createUniqueKey(BlUsers.BL_USERS, "uq_users_username", BlUsers.BL_USERS.USERNAME);
     }
 
     private static class ForeignKeys0 extends AbstractKeys {
-        public static final ForeignKey<BlPostsRecord, BlUsersRecord> BL_POSTS__BL_POSTS_AUTHOR_FKEY = createForeignKey(de.blogblog.jooq.Keys.BL_USERS_PKEY, BlPosts.BL_POSTS, "bl_posts__bl_posts_author_fkey", BlPosts.BL_POSTS.AUTHOR);
+        public static final ForeignKey<BlPostsRecord, BlUsersRecord> BL_POSTS__FK_POSTS_AUTHOR = createForeignKey(de.blogblog.jooq.Keys.PK_USERS, BlPosts.BL_POSTS, "bl_posts__fk_posts_author", BlPosts.BL_POSTS.AUTHOR);
     }
 }

@@ -12,6 +12,7 @@ import java.time.ZonedDateTime
  */
 data class Post(val id: Int,
                 val title: String,
+                val staticLink: String,
                 val content: String,
                 val author: String,
                 val created: ZonedDateTime) {
@@ -19,6 +20,7 @@ data class Post(val id: Int,
     companion object {
         val fields = arrayOf(BL_POSTS.ID,
                              BL_POSTS.TITLE,
+                             BL_POSTS.STATIC_LINK,
                              BL_POSTS.CONTENT,
                              BL_USERS.USERNAME,
                              BL_POSTS.CREATED)
@@ -41,6 +43,7 @@ fun intoPost(zone: ZoneId) = {
     rec: Record ->
     Post(rec.getId(),
          rec.getTitle(),
+         rec.getStaticLink(),
          rec.getContent(),
          rec.getAuthor(),
          rec.getCreated()
@@ -50,6 +53,8 @@ fun intoPost(zone: ZoneId) = {
 private fun Record.getId() = this.getValue(BL_POSTS.ID)!!
 
 private fun Record.getTitle() = this.getValue(BL_POSTS.TITLE)!!
+
+private fun Record.getStaticLink() = this.getValue(BL_POSTS.STATIC_LINK)!!
 
 private fun Record.getContent() = this.getValue(BL_POSTS.CONTENT)!!
 
@@ -94,3 +99,9 @@ fun DSLContext.selectPost(id: Int) =
                 .onKey(BL_POSTS.AUTHOR)
                 .where(BL_POSTS.ID.eq(id))
                 .orderBy(BL_POSTS.CREATED.desc())!!
+
+fun DSLContext.selectPost() =
+        this.select(*Post.fields)
+                .from(BL_POSTS)
+                .join(BL_USERS)
+                .onKey(BL_POSTS.AUTHOR)

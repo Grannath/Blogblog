@@ -10,17 +10,14 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
 import org.springframework.web.servlet.ModelAndView
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
+import java.time.*
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAccessor
 import java.time.temporal.TemporalQuery
 
 @SpringBootApplication
-open class BlogblogApplication {
-    @Bean open fun securityAdapter() =
+class BlogblogApplication {
+    @Bean fun securityAdapter() =
             object : WebSecurityConfigurerAdapter(false) {
                 override open fun configure(http: HttpSecurity) {
                     http.authorizeRequests()
@@ -33,7 +30,7 @@ open class BlogblogApplication {
                 }
             }
 
-    @Bean open fun zonedDateTimeParser(): Converter<String, ZonedDateTime> {
+    @Bean fun zonedDateTimeParser(): Converter<String, ZonedDateTime> {
         return Converter { source ->
             ZonedDateTime.from(
                     DateTimeFormatter.ISO_DATE_TIME
@@ -44,7 +41,15 @@ open class BlogblogApplication {
         }
     }
 
-    @Bean open fun notFoundHandler(): ErrorViewResolver {
+    @Bean fun localDateParser(): Converter<String, LocalDate> {
+        return Converter { source ->
+            DateTimeFormatter.ISO_LOCAL_DATE
+                    .parse(source,
+                           TemporalQuery(LocalDate::from))
+        }
+    }
+
+    @Bean fun notFoundHandler(): ErrorViewResolver {
         val logger = LoggerFactory.getLogger("NotFoundHandler")
         return ErrorViewResolver { request, status, model ->
             if (status == HttpStatus.NOT_FOUND) {

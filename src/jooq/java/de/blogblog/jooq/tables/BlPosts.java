@@ -38,7 +38,7 @@ import org.jooq.impl.TableImpl;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class BlPosts extends TableImpl<BlPostsRecord> {
 
-    private static final long serialVersionUID = -1853910749;
+    private static final long serialVersionUID = -1706559431;
 
     /**
      * The reference instance of <code>blogblog.bl_posts</code>
@@ -61,7 +61,12 @@ public class BlPosts extends TableImpl<BlPostsRecord> {
     /**
      * The column <code>blogblog.bl_posts.title</code>.
      */
-    public final TableField<BlPostsRecord, String> TITLE = createField("title", org.jooq.impl.SQLDataType.CLOB.nullable(false), this, "");
+    public final TableField<BlPostsRecord, String> TITLE = createField("title", org.jooq.impl.SQLDataType.VARCHAR.length(200).nullable(false), this, "");
+
+    /**
+     * The column <code>blogblog.bl_posts.static_link</code>.
+     */
+    public final TableField<BlPostsRecord, String> STATIC_LINK = createField("static_link", org.jooq.impl.SQLDataType.VARCHAR.length(100).nullable(false), this, "");
 
     /**
      * The column <code>blogblog.bl_posts.content</code>.
@@ -126,7 +131,7 @@ public class BlPosts extends TableImpl<BlPostsRecord> {
      */
     @Override
     public UniqueKey<BlPostsRecord> getPrimaryKey() {
-        return Keys.BL_POSTS_PKEY;
+        return Keys.PK_POSTS;
     }
 
     /**
@@ -134,7 +139,7 @@ public class BlPosts extends TableImpl<BlPostsRecord> {
      */
     @Override
     public List<UniqueKey<BlPostsRecord>> getKeys() {
-        return Arrays.<UniqueKey<BlPostsRecord>>asList(Keys.BL_POSTS_PKEY);
+        return Arrays.<UniqueKey<BlPostsRecord>>asList(Keys.PK_POSTS, Keys.UQ_POSTS_STATIC_LINK);
     }
 
     /**
@@ -142,7 +147,7 @@ public class BlPosts extends TableImpl<BlPostsRecord> {
      */
     @Override
     public List<ForeignKey<BlPostsRecord, ?>> getReferences() {
-        return Arrays.<ForeignKey<BlPostsRecord, ?>>asList(Keys.BL_POSTS__BL_POSTS_AUTHOR_FKEY);
+        return Arrays.<ForeignKey<BlPostsRecord, ?>>asList(Keys.BL_POSTS__FK_POSTS_AUTHOR);
     }
 
     /**
