@@ -65,7 +65,7 @@ toFullMsg list =
 mainContent : Model -> List (Html Msg)
 mainContent model =
     (case model.app.page of
-        Loading _ ->
+        Loading ->
             [ Placeholder.loading ]
 
         Overview list ->

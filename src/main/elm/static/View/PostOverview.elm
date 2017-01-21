@@ -2,15 +2,15 @@ module View.PostOverview exposing (overview)
 
 import List exposing (append)
 import View.Style exposing (class, PostListType(..))
-import AppModel exposing (Post, UserNavigation(..))
+import AppModel exposing (Post, PostPage, UserNavigation(..))
 import Html exposing (..)
 import Html.Events exposing (..)
 import Markdown
 import View.Utils exposing (dateString)
 
 
-overview : List Post -> Html AppModel.Msg
-overview posts =
+overview : PostPage -> Html AppModel.Msg
+overview page =
     let
         links =
             postNavigation
@@ -19,7 +19,7 @@ overview posts =
             [ class PostListBlock ]
             (append
                 (links
-                    :: (List.map postTeaser posts)
+                    :: (List.map postTeaser page.posts)
                 )
                 [ links ]
             )
@@ -29,7 +29,7 @@ postTeaser : Post -> Html AppModel.Msg
 postTeaser post =
     section
         [ class PostListTeaser
-        , onClick (AppModel.User (LoadPost post))
+        , onClick (AppModel.User (ShowPost post))
         ]
         [ h2
             [ class TeaserHeadline
@@ -56,13 +56,13 @@ postNavigation =
     nav
         [ class PostListNavigation ]
         [ a
-            [ onClick (AppModel.User LoadNewer)
+            [ onClick (AppModel.User PrevPage)
             , class NavigationNewer
             ]
             [ text "< Newer" ]
         , text " | "
         , a
-            [ onClick (AppModel.User LoadOlder)
+            [ onClick (AppModel.User NextPage)
             , class NavigationOlder
             ]
             [ text "Older >" ]

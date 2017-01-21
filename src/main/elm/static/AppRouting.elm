@@ -1,7 +1,7 @@
 module AppRouting exposing (Location, match, toUri)
 
-import AppModel exposing (SiteMap(..), PostQuery, PostOffset(..))
-import Route exposing ((</>), (:=), static, int)
+import AppModel exposing (SiteMap(..))
+import Route exposing ((</>), (:=), static, int, string)
 import QueryString as Query exposing (QueryString)
 import TimeExtra exposing (toExtendedIso)
 
@@ -11,11 +11,11 @@ home =
 
 
 post =
-    SinglePost := static "posts" </> int
+    SinglePost := static "posts" </> string
 
 
 postSearch =
-    PostSearch (PostQuery Nothing Nothing) := static "posts"
+    (PostSearch "") := static "posts"
 
 
 routes =
@@ -36,30 +36,10 @@ match { pathname, search } =
         route =
             Route.match routes pathname
                 |> Maybe.withDefault (Unknown <| pathname ++ search)
-
-        query =
-            Query.parse search
-
-        pageSize =
-            Query.one Query.int "pageSize" query
-
-        newerThan =
-            Query.one TimeExtra.zonedDateTime "newerThan" query
-
-        olderThan =
-            Query.one TimeExtra.zonedDateTime "olderThan" query
-
-        postOffset =
-            case olderThan of
-                Just zdt ->
-                    Just (OlderThan zdt)
-
-                _ ->
-                    Maybe.map NewerThan newerThan
     in
         case route of
             PostSearch _ ->
-                PostSearch (PostQuery pageSize postOffset)
+                PostSearch search
 
             _ ->
                 route
@@ -67,44 +47,16 @@ match { pathname, search } =
 
 toUri : SiteMap -> String
 toUri loc =
-    let
-        addParam : String -> (a -> String) -> Maybe a -> QueryString -> QueryString
-        addParam p ts mv =
-            case mv of
-                Just v ->
-                    Query.add p (ts v)
+    case loc of
+        Home ->
+            Route.reverse home []
 
-                _ ->
-                    identity
+        SinglePost title ->
+            Route.reverse post [ title ]
 
-        addPageSize pq =
-            addParam "pageSize" toString pq.pageSize
+        PostSearch query ->
+            Route.reverse postSearch []
+                ++ query
 
-        addOffset pq =
-            case pq.from of
-                Just (NewerThan zdt) ->
-                    addParam "newerThan" toExtendedIso (Just zdt)
-
-                Just (OlderThan zdt) ->
-                    addParam "olderThan" toExtendedIso (Just zdt)
-
-                _ ->
-                    identity
-    in
-        case loc of
-            Home ->
-                Route.reverse home []
-
-            SinglePost id ->
-                Route.reverse post [ toString id ]
-
-            PostSearch pq ->
-                Route.reverse postSearch []
-                    ++ Query.render
-                        (Query.empty
-                            |> addPageSize pq
-                            |> addOffset pq
-                        )
-
-            Unknown ukn ->
-                ukn
+        Unknown ukn ->
+            ukn

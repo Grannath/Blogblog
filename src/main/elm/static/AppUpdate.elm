@@ -22,7 +22,7 @@ init loc =
             (Settings 10)
 
         initModel =
-            Model initSet (Unknown "") (Loading Nothing)
+            Model initSet (Unknown "") Loading
     in
         update (goTo loc) initModel
 
@@ -52,85 +52,63 @@ update msg model =
 userNavigation : UserNavigation -> Model -> MCM
 userNavigation nav model =
     let
-        goToLocation loc =
-            newUrl (AppRouting.toUri loc)
+        postPage =
+            case model.page of
+                Overview pp ->
+                    Maybe.Just pp
 
-        updateLocation loc ( mdl, cmd ) =
-            if mdl.location == loc then
-                ( mdl, cmd )
-            else
-                ( { mdl | location = loc }
-                , Cmd.batch [ cmd, goToLocation loc ]
-                )
+                _ ->
+                    Maybe.Nothing
 
-        oldest =
-            getPostList model
-                |> reverse
-                |> head
-                |> Maybe.map .created
+        post =
+            case model.page of
+                Detailed p ->
+                    Maybe.Just p
 
-        newest =
-            getPostList model
-                |> head
-                |> Maybe.map .created
-
-        olderQuery =
-            PostQuery
-                (Just model.settings.pageSize)
-                (oldest
-                    |> Maybe.map OlderThan
-                )
-
-        newerQuery =
-            PostQuery
-                (Just model.settings.pageSize)
-                (newest
-                    |> Maybe.map NewerThan
-                )
+                _ ->
+                    Maybe.Nothing
     in
         case nav of
-            LoadOlder ->
-                updateLocation
-                    (PostSearch olderQuery)
-                    (oldest
-                        |> Maybe.map (loadOlder model)
-                        |> Maybe.withDefault (loadPosts model)
-                    )
+            NextPage ->
+                load model getNextPage postPage
 
-            LoadNewer ->
-                updateLocation
-                    (PostSearch newerQuery)
-                    (newest
-                        |> Maybe.map (loadNewer model)
-                        |> Maybe.withDefault (loadPosts model)
-                    )
+            PrevPage ->
+                load model getPrevPage postPage
 
-            LoadPost post ->
-                updateLocation
-                    (SinglePost post.id)
-                    (loadSinglePost model post.id)
+            NextPost ->
+                load model getNextPost post
+
+            PrevPost ->
+                load model getPrevPost post
+
+            ShowPost p ->
+                ( { model | page = Loading }
+                , getPost p
+                )
 
 
 apiResponse : ApiResponse -> Model -> MCM
 apiResponse api model =
     case api of
-        OlderLoaded (Ok list) ->
-            olderLoaded model list
+        PostPageLoaded (Ok pp) ->
+            ( { model | page = Overview pp }
+            , Cmd.none
+            )
 
-        NewerLoaded (Ok list) ->
-            newerLoaded model list
+        PostLoaded (Ok p) ->
+            ( { model | page = Detailed p }
+            , Cmd.none
+            )
 
-        PostLoaded (Ok post) ->
-            postLoaded model post
-
-        OlderLoaded (Err err) ->
-            loadError model err
-
-        NewerLoaded (Err err) ->
-            loadError model err
+        PostPageLoaded (Err err) ->
+            ( { model | page = ErrorPage (LoadError err) }
+            , Cmd.none
+            )
 
         PostLoaded (Err err) ->
-            loadError model err
+            ( { model | page = ErrorPage (LoadError err) }
+            , Cmd.none
+            )
 
 
 routeChange : RouteChanges -> Model -> MCM
@@ -149,131 +127,31 @@ routeChange rt model =
         else
             case loc of
                 Unknown uri ->
-                    ( unknown uri, Cmd.none )
+                    ( { model
+                      | page = ErrorPage (UnknownPage uri)
+                      , location = loc
+                      }
+                    , Cmd.none
+                    )
 
                 Home ->
-                    loadPosts model
+                    ( model, Cmd.none )
+
+                PostSearch query ->
+                    ( model, Cmd.none )
 
                 SinglePost id ->
-                    loadSinglePost model id
-
-                PostSearch pq ->
-                    searchForPosts model pq
+                    ( model, Cmd.none )
 
 
-loadPosts : Model -> MCM
-loadPosts model =
-    ( { model | page = Loading (Just model.page) }
-    , getPosts model.settings
-    )
-
-
-loadSinglePost : Model -> Int -> MCM
-loadSinglePost model id =
-    ( { model | page = Loading (Just model.page) }
-    , getSinglePost id
-    )
-
-
-loadOlder : Model -> ZonedDateTime -> MCM
-loadOlder model zdt =
-    ( { model | page = Loading (Just model.page) }
-    , getOlderPosts model.settings zdt
-    )
-
-
-loadNewer : Model -> ZonedDateTime -> MCM
-loadNewer model zdt =
-    ( { model | page = Loading (Just model.page) }
-    , getNewerPosts model.settings zdt
-    )
-
-
-searchForPosts : Model -> PostQuery -> MCM
-searchForPosts model query =
-    let
-        updateSettings sett =
-            { sett | pageSize = query.pageSize |> Maybe.withDefault sett.pageSize }
-
-        updatedModel =
-            { model
-                | page = Loading (Just model.page)
-                , settings = updateSettings model.settings
-            }
-
-        loadResults mdl =
-            case query.from of
-                Nothing ->
-                    loadPosts mdl
-
-                Just (NewerThan zdt) ->
-                    loadNewer mdl zdt
-
-                Just (OlderThan zdt) ->
-                    loadOlder mdl zdt
-    in
-        loadResults updatedModel
-
-
-getPostList : Model -> List Post
-getPostList model =
-    case model.page of
-        Overview list ->
-            list
-
-        Loading (Just (Overview list)) ->
-            list
-
-        _ ->
-            []
-
-
-newerLoaded : Model -> List Post -> MCM
-newerLoaded model list =
-    ( list
-        ++ (getPostList model)
-        |> takeFirst model.settings.pageSize
-        |> setPostList model
-    , Cmd.none
-    )
-
-
-olderLoaded : Model -> List Post -> MCM
-olderLoaded model list =
-    ( (getPostList model)
-        ++ list
-        |> takeLast model.settings.pageSize
-        |> setPostList model
-    , Cmd.none
-    )
-
-
-postLoaded : Model -> Post -> MCM
-postLoaded model post =
-    ( { model | page = Detailed post }
-    , Cmd.none
-    )
-
-
-loadError : Model -> Http.Error -> MCM
-loadError model err =
-    ( { model | page = ErrorPage (LoadError err) }
-    , Cmd.none
-    )
-
-
-takeFirst : Int -> List a -> List a
-takeFirst number list =
-    take number list
-
-
-takeLast : Int -> List a -> List a
-takeLast number list =
-    reverse list
-        |> take number
-        |> reverse
-
-
-setPostList : Model -> List Post -> Model
-setPostList model list =
-    { model | page = Overview list }
+load : Model -> (m -> Cmd Msg) -> Maybe m -> MCM
+load model cmd md =
+    Maybe.map
+        (\m ->
+            ( { model | page = Loading }
+            , cmd m
+            )
+        )
+        md
+        |> Maybe.withDefault
+            ( model, Cmd.none )

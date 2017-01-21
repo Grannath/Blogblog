@@ -1,5 +1,6 @@
 module AppModel exposing (..)
 
+import Hal exposing (Link, Resource)
 import Time.ZonedDateTime exposing (ZonedDateTime)
 import Http
 
@@ -21,6 +22,13 @@ type alias Post =
     , content : String
     , author : String
     , created : ZonedDateTime
+    , links : List Link
+    }
+
+
+type alias PostPage =
+    { posts : List Post
+    , links : List Link
     }
 
 
@@ -34,20 +42,9 @@ type alias Settings =
 
 type SiteMap
     = Home
-    | PostSearch PostQuery
-    | SinglePost Int
+    | PostSearch String
+    | SinglePost String
     | Unknown String
-
-
-type alias PostQuery =
-    { pageSize : Maybe Int
-    , from : Maybe PostOffset
-    }
-
-
-type PostOffset
-    = NewerThan ZonedDateTime
-    | OlderThan ZonedDateTime
 
 
 
@@ -55,9 +52,9 @@ type PostOffset
 
 
 type Page
-    = Overview (List Post)
+    = Overview PostPage
     | Detailed Post
-    | Loading (Maybe Page)
+    | Loading
     | ErrorPage Error
 
 
@@ -81,9 +78,11 @@ type Msg
 
 
 type UserNavigation
-    = LoadOlder
-    | LoadNewer
-    | LoadPost Post
+    = NextPage
+    | PrevPage
+    | NextPost
+    | PrevPost
+    | ShowPost Post
 
 
 
@@ -91,8 +90,7 @@ type UserNavigation
 
 
 type ApiResponse
-    = OlderLoaded (Result Http.Error (List Post))
-    | NewerLoaded (Result Http.Error (List Post))
+    = PostPageLoaded (Result Http.Error PostPage)
     | PostLoaded (Result Http.Error Post)
 
 
