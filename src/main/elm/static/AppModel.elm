@@ -78,7 +78,8 @@ type Msg
 
 
 type UserNavigation
-    = NextPage
+    = GoHome
+    | NextPage
     | PrevPage
     | NextPost
     | PrevPost

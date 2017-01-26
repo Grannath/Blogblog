@@ -1,6 +1,7 @@
 module Api
     exposing
-        ( goToFirstPosts
+        ( goToLocation
+        , goToFirstPosts
         , goToNextPage
         , goToPrevPage
         , goToNextPost
@@ -23,12 +24,41 @@ apiUrl =
     "http://localhost:8080/api"
 
 
+postsApi =
+    "/posts"
+
+
 type alias MCM =
     ( Model, Cmd Msg )
 
 
 
 -- Navigation
+
+
+goToLocation : Model -> SiteMap -> MCM
+goToLocation model location =
+    let
+        cmd =
+            case location of
+                Home ->
+                    getFirstPosts model
+
+                PostSearch query ->
+                    Http.send
+                        (Api << PostPageLoaded)
+                        (Http.get (apiUrl ++ postsApi ++ query) decodePostPage)
+
+                SinglePost title ->
+                    Http.send
+                        (Api << PostLoaded)
+                        (Http.get (apiUrl ++ postsApi ++ "/" ++ title) decodePost)
+
+                _ ->
+                    Cmd.none
+    in
+        (location, Cmd.none)
+            |> locationAnd cmd model
 
 
 goToFirstPosts : Model -> MCM
@@ -103,7 +133,7 @@ getFirstPosts mod =
     let
         uri =
             apiUrl
-                ++ "/posts"
+                ++ postsApi
                 ++ "&pageSize="
                 ++ (toString mod.settings.pageSize)
     in
@@ -223,7 +253,7 @@ navigatePage rel =
 pageLocation lnk =
     let
         api =
-            apiUrl ++ "/posts"
+            apiUrl ++ postsApi
 
         offset =
             String.length api
@@ -244,7 +274,7 @@ navigatePost rel =
 postLocation lnk =
     let
         api =
-            apiUrl ++ "/posts/"
+            apiUrl ++ postsApi ++ "/"
 
         offset =
             String.length api

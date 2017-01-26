@@ -2,14 +2,15 @@ module Main exposing (..)
 
 import Navigation exposing (Location)
 import View.View as View exposing (Model, Msg(..), view)
-import AppModel
+import AppModel exposing (RouteChanges(..))
 import AppUpdate
+import AppRouting exposing (match)
 
 
 
 main =
     Navigation.program
-        (App << AppUpdate.goTo)
+        (App << AppModel.Routing << GoTo << match)
         { init = init
         , view = view
         , update = update

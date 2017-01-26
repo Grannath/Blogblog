@@ -69,6 +69,10 @@ userNavigation nav model =
                     Maybe.Nothing
     in
         case nav of
+            GoHome ->
+                goToFirstPosts model
+                    |> withLoadingPage
+
             NextPage ->
                 goToNextPage model postPage
                     |> withLoadingPage
@@ -117,8 +121,11 @@ apiResponse api model =
 routeChange : RouteChanges -> Model -> MCM
 routeChange rt model =
     let
-        unknown uri =
-            { model | page = ErrorPage (UnknownPage uri) }
+        unknown uri lc =
+            { model
+            | page = ErrorPage (UnknownPage uri)
+            , location = lc
+            }
 
         loc =
             case rt of
@@ -130,21 +137,13 @@ routeChange rt model =
         else
             case loc of
                 Unknown uri ->
-                    ( { model
-                        | page = ErrorPage (UnknownPage uri)
-                        , location = loc
-                      }
+                    ( unknown uri loc
                     , Cmd.none
                     )
 
-                Home ->
-                    ( model, Cmd.none )
-
-                PostSearch query ->
-                    ( model, Cmd.none )
-
-                SinglePost id ->
-                    ( model, Cmd.none )
+                _ ->
+                    goToLocation model loc
+                        |> withLoadingPage
 
 
 withLoadingPage : MCM -> MCM
