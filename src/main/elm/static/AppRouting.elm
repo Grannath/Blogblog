@@ -1,4 +1,4 @@
-module AppRouting exposing (Location, match, toUri)
+module AppRouting exposing (Location, match, toUrl)
 
 import AppModel exposing (SiteMap(..))
 import Route exposing ((</>), (:=), static, int, string)
@@ -45,8 +45,8 @@ match { pathname, search } =
                 route
 
 
-toUri : SiteMap -> String
-toUri loc =
+toUrl : SiteMap -> String
+toUrl loc =
     case loc of
         Home ->
             Route.reverse home []

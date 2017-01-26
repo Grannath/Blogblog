@@ -1,4 +1,4 @@
-module AppUpdate exposing (update, init, subscriptions, goTo)
+module AppUpdate exposing (update, init, subscriptions, route)
 
 import AppModel exposing (..)
 import AppRouting exposing (Location)
@@ -10,8 +10,8 @@ import Navigation exposing (newUrl)
 import Time.ZonedDateTime exposing (ZonedDateTime)
 
 
-goTo : Location a -> Msg
-goTo =
+route : Location a -> Msg
+route =
     AppRouting.match >> GoTo >> Routing
 
 
@@ -24,7 +24,7 @@ init loc =
         initModel =
             Model initSet (Unknown "") Loading
     in
-        update (goTo loc) initModel
+        update (route loc) initModel
 
 
 subscriptions : { md | app : Model } -> Sub Msg
@@ -70,21 +70,24 @@ userNavigation nav model =
     in
         case nav of
             NextPage ->
-                load model getNextPage postPage
+                goToNextPage model postPage
+                    |> withLoadingPage
 
             PrevPage ->
-                load model getPrevPage postPage
+                goToPrevPage model postPage
+                    |> withLoadingPage
 
             NextPost ->
-                load model getNextPost post
+                goToNextPost model post
+                    |> withLoadingPage
 
             PrevPost ->
-                load model getPrevPost post
+                goToPrevPost model post
+                    |> withLoadingPage
 
             ShowPost p ->
-                ( { model | page = Loading }
-                , getPost p
-                )
+                goToPost model (Maybe.Just p)
+                 |> withLoadingPage
 
 
 apiResponse : ApiResponse -> Model -> MCM
@@ -128,8 +131,8 @@ routeChange rt model =
             case loc of
                 Unknown uri ->
                     ( { model
-                      | page = ErrorPage (UnknownPage uri)
-                      , location = loc
+                        | page = ErrorPage (UnknownPage uri)
+                        , location = loc
                       }
                     , Cmd.none
                     )
@@ -144,14 +147,8 @@ routeChange rt model =
                     ( model, Cmd.none )
 
 
-load : Model -> (m -> Cmd Msg) -> Maybe m -> MCM
-load model cmd md =
-    Maybe.map
-        (\m ->
-            ( { model | page = Loading }
-            , cmd m
-            )
-        )
-        md
-        |> Maybe.withDefault
-            ( model, Cmd.none )
+withLoadingPage : MCM -> MCM
+withLoadingPage ( model, cmd ) =
+    ( { model | page = Loading }
+    , cmd
+    )

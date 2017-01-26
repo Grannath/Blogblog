@@ -1,22 +1,109 @@
-module Api exposing (getFirstPosts, getNextPost, getPrevPost, getPost, getNextPage, getPrevPage)
+module Api
+    exposing
+        ( goToFirstPosts
+        , goToNextPage
+        , goToPrevPage
+        , goToNextPost
+        , goToPrevPost
+        , goToPost
+        )
 
-import AppModel exposing (ApiResponse(..), Model, Msg(Api), Page(Detailed, Overview), Post, PostPage, Settings)
+import AppModel exposing (ApiResponse(..), Model, Msg(Api), Post, PostPage, SiteMap(..))
+import AppRouting
 import Http exposing (..)
-import Hal exposing (Resource)
+import Maybe exposing (Maybe(..), map, withDefault, andThen)
+import Navigation exposing (newUrl)
+import Hal exposing (Link, Resource)
 import Json.Decode as Json exposing (field, int, string, list)
 import Time.ZonedDateTime exposing (ZonedDateTime)
 import TimeExtra exposing (fromExtendedIso, toExtendedIso)
 
 
-postsApiUrl =
-    "http://localhost:8080/public/posts"
+apiUrl =
+    "http://localhost:8080/api"
+
+
+type alias MCM =
+    ( Model, Cmd Msg )
+
+
+
+-- Navigation
+
+
+goToFirstPosts : Model -> MCM
+goToFirstPosts model =
+    setFirstPostsUrl
+        |> map
+            (locationAnd (getFirstPosts model) model)
+        |> withDefault
+            ( model, Cmd.none )
+
+
+goToPrevPost : Model -> Maybe Post -> MCM
+goToPrevPost =
+    goTo setPrevPostUrl getPrevPost
+
+
+goToNextPost : Model -> Maybe Post -> MCM
+goToNextPost =
+    goTo setNextPostUrl getNextPost
+
+
+goToPost : Model -> Maybe Post -> MCM
+goToPost =
+    goTo setPostUrl getPost
+
+
+goToPrevPage : Model -> Maybe PostPage -> MCM
+goToPrevPage =
+    goTo setPrevPageUrl getPrevPage
+
+
+goToNextPage : Model -> Maybe PostPage -> MCM
+goToNextPage =
+    goTo setNextPageUrl getNextPage
+
+
+goTo :
+    (r -> Maybe ( SiteMap, Cmd Msg ))
+    -> (r -> Cmd Msg)
+    -> Model
+    -> Maybe r
+    -> MCM
+goTo pageMap loadMap mdl res =
+    let
+        empty = ( mdl, Cmd.none )
+    in
+        case res of
+            Just re ->
+                pageMap re
+                    |> map
+                        (locationAnd (loadMap re) mdl)
+                    |> withDefault
+                        empty
+
+            _ ->
+                empty
+
+
+locationAnd : Cmd Msg -> Model -> ( SiteMap, Cmd Msg ) -> MCM
+locationAnd loadCmd model ( sm, setCmd ) =
+    ( { model | location = sm }
+    , Cmd.batch [ setCmd, loadCmd ]
+    )
+
+
+
+-- Loading
 
 
 getFirstPosts : Model -> Cmd Msg
 getFirstPosts mod =
     let
         uri =
-            postsApiUrl
+            apiUrl
+                ++ "/posts"
                 ++ "&pageSize="
                 ++ (toString mod.settings.pageSize)
     in
@@ -24,76 +111,179 @@ getFirstPosts mod =
 
 
 getPrevPost : Post -> Cmd Msg
-getPrevPost model =
-    navigatePost "prev" model
+getPrevPost post =
+    loadPostLink "prev" post
         |> orElse
             (\() ->
-                navigatePost "previous" model
+                loadPostLink "previous" post
             )
-        |> Maybe.withDefault Cmd.none
+        |> withDefault Cmd.none
 
 
 getNextPost : Post -> Cmd Msg
 getNextPost =
-    navigatePost "next"
-        >> Maybe.withDefault Cmd.none
+    loadPostLink "next"
+        >> withDefault Cmd.none
 
 
 getPrevPage : PostPage -> Cmd Msg
 getPrevPage model =
-    navigatePage "prev" model
+    loadPageLink "prev" model
         |> orElse
             (\() ->
-                navigatePage "previous" model
+                loadPageLink "previous" model
             )
-        |> Maybe.withDefault Cmd.none
+        |> withDefault Cmd.none
 
 
 getNextPage : PostPage -> Cmd Msg
 getNextPage =
-    navigatePage "next"
-        >> Maybe.withDefault Cmd.none
+    loadPageLink "next"
+        >> withDefault Cmd.none
 
 
 getPost : Post -> Cmd Msg
 getPost =
-    navigatePost "self"
-        >> Maybe.withDefault Cmd.none
+    loadPostLink "self"
+        >> withDefault Cmd.none
 
 
 type alias ResultMapper a =
     Result Error (Resource a) -> Msg
 
 
-navigatePost rel =
-    navigate rel (Api << PostLoaded) decodePost
+loadPostLink rel =
+    load rel (Api << PostLoaded) decodePost
 
 
-navigatePage rel =
-    navigate rel (Api << PostPageLoaded) decodePostPage
+loadPageLink rel =
+    load rel (Api << PostPageLoaded) decodePostPage
 
 
-navigate :
+load :
     String
     -> ResultMapper a
     -> Json.Decoder (Resource a)
     -> Resource a
     -> Maybe (Cmd Msg)
-navigate rel msg dec rs =
+load rel msg dec rs =
     Hal.link rel rs
-        |> Maybe.map
+        |> map
             (\lnk ->
                 Http.send msg (Http.get lnk.href dec)
             )
 
 
+
+-- URL handling
+
+
+setFirstPostsUrl : Maybe ( SiteMap, Cmd Msg )
+setFirstPostsUrl =
+    Just ( Home, newUrl (AppRouting.toUrl Home) )
+
+
+setNextPostUrl : Post -> Maybe ( SiteMap, Cmd Msg )
+setNextPostUrl =
+    navigatePost "next"
+
+
+setPrevPostUrl : Post -> Maybe ( SiteMap, Cmd Msg )
+setPrevPostUrl post =
+    navigatePost "prev" post
+        |> orElse
+            (\() ->
+                navigatePost "previous" post
+            )
+
+
+setPostUrl : Post -> Maybe ( SiteMap, Cmd Msg )
+setPostUrl =
+    navigatePost "self"
+
+
+setNextPageUrl : PostPage -> Maybe ( SiteMap, Cmd Msg )
+setNextPageUrl =
+    navigatePage "next"
+
+
+setPrevPageUrl : PostPage -> Maybe ( SiteMap, Cmd Msg )
+setPrevPageUrl page =
+    navigatePage "prev" page
+        |> orElse
+            (\() ->
+                navigatePage "previous" page
+            )
+
+
+navigatePage rel =
+    navigate rel pageLocation
+
+
+pageLocation lnk =
+    let
+        api =
+            apiUrl ++ "/posts"
+
+        offset =
+            String.length api
+
+        query =
+            String.dropLeft offset lnk.href
+    in
+        if String.startsWith api lnk.href then
+            Just (PostSearch query)
+        else
+            Nothing
+
+
+navigatePost rel =
+    navigate rel postLocation
+
+
+postLocation lnk =
+    let
+        api =
+            apiUrl ++ "/posts/"
+
+        offset =
+            String.length api
+
+        title =
+            String.dropLeft offset lnk.href
+    in
+        if String.startsWith api lnk.href then
+            Just (SinglePost title)
+        else
+            Nothing
+
+
+navigate :
+    String
+    -> (Link -> Maybe SiteMap)
+    -> Resource a
+    -> Maybe ( SiteMap, Cmd Msg )
+navigate rel mapper rs =
+    Hal.link rel rs
+        |> andThen
+            mapper
+        |> map
+            (\sm ->
+                ( sm, newUrl (AppRouting.toUrl sm) )
+            )
+
+
+
+-- Utils
+
+
 orElse : (() -> Maybe a) -> Maybe a -> Maybe a
 orElse alt mb =
     case mb of
-        Maybe.Just _ ->
+        Just _ ->
             mb
 
-        Maybe.Nothing ->
+        Nothing ->
             alt ()
 
 
